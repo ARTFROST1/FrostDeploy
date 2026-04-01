@@ -1,0 +1,74 @@
+{
+  "project": "FrostDeploy",
+  "description": "Реестр внутренней документации проекта FrostDeploy",
+  "updated": "2026-03-31",
+  "documents": [
+    {
+      "id": "prd",
+      "title": "Product Requirements Document",
+      "path": "PRD.md",
+      "phase": 1,
+      "status": "completed",
+      "description": "Продуктовые требования: цели, персоны, функциональность, MVP-скоуп"
+    },
+    {
+      "id": "tech-stack",
+      "title": "Технологический стек",
+      "path": "TECH-STACK.md",
+      "phase": 2,
+      "status": "completed",
+      "depends_on": ["prd"],
+      "description": "Выбор технологий с обоснованием: рантайм, фреймворки, БД, инфраструктура"
+    },
+    {
+      "id": "database",
+      "title": "Схема базы данных",
+      "path": "DATABASE.md",
+      "phase": 3,
+      "status": "completed",
+      "depends_on": ["prd", "tech-stack"],
+      "description": "Схема SQLite: таблицы, связи, миграции, индексы"
+    },
+    {
+      "id": "ui-ux",
+      "title": "UI/UX спецификация",
+      "path": "UI-UX.md",
+      "phase": 4,
+      "status": "completed",
+      "depends_on": ["prd", "tech-stack"],
+      "description": "Интерфейс: wireframes, user flows, компоненты, навигация"
+    },
+    {
+      "id": "project-structure",
+      "title": "Структура проекта",
+      "path": "PROJECT-STRUCTURE.md",
+      "phase": 5,
+      "status": "completed",
+      "depends_on": ["prd", "tech-stack", "database", "ui-ux"],
+      "description": "Файловая структура, пакеты, DAG зависимостей, конвенции именования"
+    },
+    {
+      "id": "implementation",
+      "title": "План реализации",
+      "path": "implementation/IMPLEMENTATION.md",
+      "phase": 6,
+      "status": "completed",
+      "depends_on": ["prd", "tech-stack", "database", "ui-ux", "project-structure"],
+      "description": "Пошаговый план реализации по фазам с acceptance criteria"
+    }
+  ],
+  "research": [
+    {
+      "id": "research-platform",
+      "title": "Исследование платформ деплоя",
+      "path": "../DEPLOY-PLATFORM-RESEARCH.md",
+      "status": "completed"
+    },
+    {
+      "id": "research-code",
+      "title": "Анализ кода конкурентов",
+      "path": "../COMPETITORS-CODE-ANALYSIS.md",
+      "status": "completed"
+    }
+  ]
+}
