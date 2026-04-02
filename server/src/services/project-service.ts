@@ -198,6 +198,17 @@ export async function deleteProject(db: DbClient, id: string): Promise<boolean> 
   return result.changes > 0;
 }
 
+export function getDecryptedEnvVars(
+  db: DbClient,
+  projectId: string,
+): Array<{ key: string; value: string }> {
+  const rows = db.select().from(envVariables).where(eq(envVariables.projectId, projectId)).all();
+  return rows.map((r) => ({
+    key: r.key,
+    value: decrypt(r.encryptedValue, encryptionKey()),
+  }));
+}
+
 export function getProjectEnvVars(db: DbClient, projectId: string) {
   const rows = db.select().from(envVariables).where(eq(envVariables.projectId, projectId)).all();
 

@@ -8,6 +8,7 @@ export type DeployStep =
   | 'install'
   | 'build'
   | 'sync'
+  | 'env'
   | 'restart'
   | 'healthcheck';
 

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import type { DbClient } from '@fd/db';
@@ -17,6 +17,7 @@ import {
   updateProjectStatus,
   updateProjectSha,
 } from '../services/deploy-service.js';
+import { getDecryptedEnvVars } from '../services/project-service.js';
 
 interface Project {
   id: string;
@@ -207,23 +208,44 @@ export async function executePipeline(
           }
         }
 
-        // 8. Restart (create unit if missing)
+        // 7.6 Write env file
+        const envVarsDir = '/var/lib/frostdeploy/env';
+        const envVarsPath = `${envVarsDir}/${project.name}.env`;
+        await runStep('env', 'Writing env file', onEvent, async () => {
+          const vars = getDecryptedEnvVars(db, project.id);
+          const IS_MAC = process.platform === 'darwin';
+          const lines = vars.map(
+            (v) => `${v.key}="${v.value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
+          );
+          const content = lines.length ? lines.join('\n') + '\n' : '# no env vars\n';
+          if (IS_MAC) {
+            onLog(`[mac] Would write ${vars.length} env var(s) to ${envVarsPath}`);
+          } else {
+            mkdirSync(envVarsDir, { recursive: true });
+            writeFileSync(envVarsPath, content, { encoding: 'utf-8' });
+            chmodSync(envVarsPath, 0o600);
+            onLog(`Wrote ${vars.length} env var(s) to ${envVarsPath}`);
+          }
+        });
+
+        // 8. Restart (always recreate unit with envFilePath)
         await runStep('restart', 'Restarting service', onEvent, async () => {
           const unitPath = `/etc/systemd/system/frostdeploy-${project.name}.service`;
-          if (!existsSync(unitPath)) {
-            onLog(`Unit file not found at ${unitPath}, creating...`);
-            await createUnit({
-              name: project.name,
-              runtimeDir: project.runtimeDir,
-              startCmd: 'npm start',
-              port: project.port,
-              envFilePath: undefined,
-              cpuQuota: undefined,
-              memoryMax: undefined,
-            });
-            await startService(project.name);
-          } else {
+          const wasRunning = existsSync(unitPath);
+          onLog(`Creating/updating unit file at ${unitPath}`);
+          await createUnit({
+            name: project.name,
+            runtimeDir: project.runtimeDir,
+            startCmd: 'npm start',
+            port: project.port,
+            envFilePath: envVarsPath,
+            cpuQuota: undefined,
+            memoryMax: undefined,
+          });
+          if (wasRunning) {
             await restartService(project.name);
+          } else {
+            await startService(project.name);
           }
         });
 

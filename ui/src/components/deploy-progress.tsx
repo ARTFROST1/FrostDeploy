@@ -18,6 +18,7 @@ const STEP_LABELS: Record<DeployStep, string> = {
   install: 'Install',
   build: 'Build',
   sync: 'Sync',
+  env: 'Env',
   restart: 'Restart',
   healthcheck: 'Health',
 };
