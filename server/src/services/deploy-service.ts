@@ -82,10 +82,11 @@ export function updateProjectSha(db: DbClient, projectId: string, sha: string): 
 }
 
 export interface PaginatedResult<T> {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
   perPage: number;
+  totalPages: number;
 }
 
 export function getDeploymentsByProject(
@@ -123,11 +124,14 @@ export function getDeploymentsByProject(
     .offset(offset)
     .all();
 
+  const total = totalRow!.total;
+
   return {
-    data: rows,
-    total: totalRow!.total,
+    items: rows,
+    total,
     page,
     perPage,
+    totalPages: Math.ceil(total / perPage),
   };
 }
 
