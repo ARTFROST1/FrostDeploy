@@ -17,8 +17,12 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { POLLING_INTERVALS } from '@/lib/constants';
 import { formatRelativeTime, formatDuration, shortSha } from '@/lib/utils';
 
-function formatGB(bytes: number): string {
-  return (bytes / 1024 / 1024 / 1024).toFixed(1);
+function formatMBtoGB(mb: number): string {
+  return (mb / 1024).toFixed(1);
+}
+
+function formatGB(gb: number): string {
+  return gb.toFixed(1);
 }
 
 /* ─── Skeleton states ──────────────────────────────────────────────── */
@@ -187,7 +191,7 @@ export default function DashboardPage() {
           <MetricCard
             icon={MemoryStick}
             label="RAM"
-            value={`${formatGB(metrics.memory.used)} / ${formatGB(metrics.memory.total)} GB`}
+            value={`${formatMBtoGB(metrics.memory.used)} / ${formatMBtoGB(metrics.memory.total)} GB`}
             percentage={metrics.memory.percentage}
           />
           <MetricCard
