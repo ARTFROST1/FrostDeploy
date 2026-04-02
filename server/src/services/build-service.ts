@@ -3,7 +3,9 @@ import { execCommand } from '../lib/exec.js';
 const BUILD_TIMEOUT_MS = 600_000; // 10 minutes
 
 /**
- * Install dependencies (--ignore-scripts for security, NFR-305)
+ * Install dependencies.
+ * Note: lifecycle scripts are allowed because the build step already executes
+ * arbitrary user code. Frameworks like Next.js need postinstall (e.g. @next/swc).
  */
 export async function installDeps(srcDir: string, onLog?: (line: string) => void): Promise<void> {
   const logLines: string[] = [];
@@ -14,7 +16,7 @@ export async function installDeps(srcDir: string, onLog?: (line: string) => void
   };
 
   try {
-    await execCommand('npm', ['ci', '--ignore-scripts'], {
+    await execCommand('npm', ['ci'], {
       cwd: srcDir,
       timeout: BUILD_TIMEOUT_MS,
       onLog: collectLog,
