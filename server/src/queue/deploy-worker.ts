@@ -7,7 +7,7 @@ import type { SSEEvent } from '../lib/sse.js';
 import { cloneRepo, fetchOrigin, checkoutSha } from '../services/git-service.js';
 import { installDeps, runBuild } from '../services/build-service.js';
 import { syncFiles } from '../lib/rsync.js';
-import { restartService } from '../lib/systemd.js';
+import { createUnit, startService, restartService } from '../lib/systemd.js';
 import {
   createDeployment,
   acquireLock,
@@ -176,9 +176,21 @@ export async function executePipeline(
           await syncFiles(project.srcDir, project.runtimeDir, project.outputDir || 'dist', onLog);
         });
 
-        // 8. Restart
+        // 8. Restart (create unit if missing)
         await runStep('restart', 'Restarting service', onEvent, async () => {
-          await restartService(project.name);
+          const unitPath = `/etc/systemd/system/frostdeploy-${project.name}.service`;
+          if (!existsSync(unitPath)) {
+            onLog(`Unit file not found at ${unitPath}, creating...`);
+            await createUnit({
+              name: project.name,
+              runtimeDir: project.runtimeDir,
+              startCmd: 'npm start',
+              port: project.port,
+            });
+            await startService(project.name);
+          } else {
+            await restartService(project.name);
+          }
         });
 
         // 9. Health check

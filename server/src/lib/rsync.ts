@@ -9,44 +9,31 @@ function validatePath(path: string, label: string): void {
 }
 
 /**
- * Sync build artifacts to production runtime directory (two-directory model).
+ * Sync entire source to production runtime directory (two-directory model).
  *
- * 1. rsync build output → runtimeDir
- * 2. copy package.json / package-lock.json → runtimeDir
- * 3. npm ci --omit=dev in runtimeDir
+ * 1. rsync srcDir → runtimeDir (excluding node_modules and .git)
+ * 2. npm ci --omit=dev in runtimeDir
+ *
+ * This preserves the full project structure so any framework
+ * (Next.js, Vite, static, etc.) finds its expected layout.
  */
 export async function syncFiles(
   srcDir: string,
   runtimeDir: string,
-  outputDir: string,
+  _outputDir: string,
   onLog?: (line: string) => void,
 ): Promise<void> {
   validatePath(srcDir, 'srcDir');
   validatePath(runtimeDir, 'runtimeDir');
-  validatePath(outputDir, 'outputDir');
 
-  // 1. rsync build artifacts to runtime dir
-  await execCommand('rsync', ['-a', '--delete', `${srcDir}/${outputDir}/`, `${runtimeDir}/`], {
-    onLog,
-  });
+  // 1. rsync entire source to runtime dir, excluding heavy/dev-only dirs
+  await execCommand(
+    'rsync',
+    ['-a', '--delete', '--exclude=node_modules', '--exclude=.git', `${srcDir}/`, `${runtimeDir}/`],
+    { onLog },
+  );
 
-  // 2. copy package.json and package-lock.json (if exist) to runtime dir
-  await execCommand('cp', ['-f', `${srcDir}/package.json`, `${runtimeDir}/package.json`], {
-    onLog,
-  });
-
-  // package-lock.json is optional — ignore errors if missing
-  try {
-    await execCommand(
-      'cp',
-      ['-f', `${srcDir}/package-lock.json`, `${runtimeDir}/package-lock.json`],
-      { onLog },
-    );
-  } catch {
-    // package-lock.json may not exist — that's fine
-  }
-
-  // 3. install production-only dependencies in runtime dir
+  // 2. install production-only dependencies in runtime dir
   await execCommand('npm', ['ci', '--omit=dev'], {
     cwd: runtimeDir,
     onLog,
