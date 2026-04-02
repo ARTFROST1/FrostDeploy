@@ -151,21 +151,18 @@ export async function checkSslStatus(
   let status: SslStatus = 'pending';
 
   try {
-    const res = await fetch(`${CADDY_ADMIN_URL}/config/apps/tls/certificates/automate`);
+    const routes = await getRoutes();
+    const hasRoute = routes.some((r) => r.match?.[0]?.host?.includes(domain));
 
-    if (res.ok) {
-      const automatedDomains = (await res.json()) as string[];
-      if (automatedDomains.includes(domain)) {
-        // Domain is in automate list — check if DNS is verified
-        const row = db
-          .select({ verifiedAt: domains.verifiedAt })
-          .from(domains)
-          .where(eq(domains.domain, domain))
-          .get();
-        status = row?.verifiedAt ? 'active' : 'provisioning';
-      }
-      // else: domain not in automate list → stays 'pending'
+    if (hasRoute) {
+      const row = db
+        .select({ verifiedAt: domains.verifiedAt })
+        .from(domains)
+        .where(eq(domains.domain, domain))
+        .get();
+      status = row?.verifiedAt ? 'active' : 'provisioning';
     }
+    // else: no route in Caddy → stays 'pending'
   } catch {
     status = 'error';
   }
