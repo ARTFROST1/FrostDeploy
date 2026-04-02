@@ -173,7 +173,7 @@ function StepGitHub({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const patRegex = /^gh[ps]_/;
+  const patRegex = /^(gh[ps]_|github_pat_)/;
   const hasInput = githubPat.length > 0;
   const formatValid = patRegex.test(githubPat);
 
@@ -197,7 +197,9 @@ function StepGitHub({
         />
         {hasInput && (
           <p className={cn('text-sm', formatValid ? 'text-status-success' : 'text-destructive')}>
-            {formatValid ? '✓ Формат токена корректен' : 'Токен должен начинаться с ghp_ или ghs_'}
+            {formatValid
+              ? '✓ Формат токена корректен'
+              : 'Токен должен начинаться с ghp_, ghs_ или github_pat_'}
           </p>
         )}
         <p className="text-xs text-muted-foreground">
