@@ -91,8 +91,8 @@ app.route('/api', api);
 
 // Static file serving (production only) — SPA fallback
 if (process.env.NODE_ENV === 'production') {
-  app.use('/*', serveStatic({ root: '../ui/dist' }));
-  app.get('*', serveStatic({ root: '../ui/dist', path: 'index.html' }));
+  app.use('/*', serveStatic({ root: './ui/dist' }));
+  app.get('*', serveStatic({ root: './ui/dist', path: 'index.html' }));
 }
 
 // Start server
