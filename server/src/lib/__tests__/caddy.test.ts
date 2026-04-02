@@ -12,7 +12,7 @@ describe('generateRouteConfig', () => {
   it('generates reverse_proxy config for SSR project', async () => {
     const route = await generateRouteConfig('example.com', 4321, false);
     expect(route['@id']).toBe('route-example.com');
-    expect(route.match[0].host).toEqual(['example.com']);
+    expect(route.match[0]!.host).toEqual(['example.com']);
     expect(route.handle).toHaveLength(2);
     expect(route.handle[0]).toEqual({ handler: 'encode', encodings: { gzip: {}, zstd: {} } });
     expect(route.handle[1]).toMatchObject({
