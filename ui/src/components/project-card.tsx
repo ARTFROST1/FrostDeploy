@@ -70,7 +70,7 @@ export function ProjectCard({ project, onDeploy }: ProjectCardProps) {
               <ExternalLink className="h-3 w-3" />
             </a>
           ) : (
-            <span className="text-sm text-muted-foreground">нет домена</span>
+            <span className="text-sm text-muted-foreground">IP:{project.port}</span>
           )}
         </div>
 

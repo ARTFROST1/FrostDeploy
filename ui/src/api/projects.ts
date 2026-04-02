@@ -44,3 +44,32 @@ export function updateEnvVars(
 ) {
   return api.put<EnvVariable[]>(`/api/projects/${projectId}/env`, vars);
 }
+
+export function setProjectDomain(projectId: string, domain: string) {
+  return api.put<Project>(`/api/projects/${projectId}/domain`, { domain });
+}
+
+export function removeProjectDomain(projectId: string) {
+  return api.delete<{ removed: boolean }>(`/api/projects/${projectId}/domain`);
+}
+
+export function fetchProjectDnsRecords(projectId: string) {
+  return api.get<{
+    domain: string;
+    serverIp: string;
+    records: Array<{ type: string; name: string; value: string; description: string }>;
+  }>(`/api/projects/${projectId}/dns-records`);
+}
+
+export function verifyProjectDns(projectId: string) {
+  return api.post<{
+    verified: boolean;
+    sslStatus?: string;
+    actualIp?: string;
+    expectedIp?: string;
+  }>(`/api/projects/${projectId}/dns-verify`, {});
+}
+
+export function fetchProjectSslStatus(projectId: string) {
+  return api.get<{ sslStatus: string; domain: string }>(`/api/projects/${projectId}/ssl-status`);
+}

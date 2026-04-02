@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Globe,
@@ -210,23 +210,65 @@ export default function ProjectOverviewPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {project.domain ? (
-              <>
-                <a
-                  href={`https://${project.domain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-500 hover:underline"
-                >
-                  {project.domain}
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                </a>
-                <div className="flex items-center gap-1 text-xs text-emerald-500">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  SSL ✅
-                </div>
-              </>
+              (() => {
+                 
+                const domainInfo = (
+                  project as unknown as {
+                    domains?: Array<{
+                      domain: string;
+                      sslStatus: string;
+                      verifiedAt: string | null;
+                    }>;
+                  }
+                ).domains?.[0];
+                const ssl = domainInfo?.sslStatus;
+                return (
+                  <>
+                    <a
+                      href={`https://${project.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-500 hover:underline"
+                    >
+                      {project.domain}
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                    </a>
+                    {ssl === 'active' ? (
+                      <div className="flex items-center gap-1 text-xs text-emerald-500">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        SSL ✅
+                      </div>
+                    ) : ssl === 'provisioning' || ssl === 'pending' ? (
+                      <div className="flex items-center gap-1 text-xs text-amber-500">
+                        <Clock className="h-3.5 w-3.5" />
+                        SSL выпускается…
+                      </div>
+                    ) : ssl === 'error' ? (
+                      <div className="flex items-center gap-1 text-xs text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        Ошибка SSL
+                      </div>
+                    ) : (
+                      <Link
+                        to={`/projects/${id}/domain`}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Проверить →
+                      </Link>
+                    )}
+                  </>
+                );
+              })()
             ) : (
-              <span className="text-sm text-muted-foreground">Нет домена</span>
+              <div className="space-y-1">
+                <span className="text-sm text-muted-foreground">Нет домена</span>
+                <Link
+                  to={`/projects/${id}/domain`}
+                  className="block text-xs text-primary hover:underline"
+                >
+                  Настроить →
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>

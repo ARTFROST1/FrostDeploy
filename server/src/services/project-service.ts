@@ -5,14 +5,30 @@ import type { CreateProjectInput, UpdateProjectInput, UpdateEnvVarsInput } from 
 import { PORT_RANGE_START, PORT_RANGE_END } from '@fd/shared';
 import { encrypt, decrypt } from '../lib/crypto.js';
 import { mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createUnit, stopService, deleteUnit } from '../lib/systemd.js';
-import { addRoute, removeRoute, getServerIp, verifyDnsWithRetry } from './proxy-service.js';
+import { removeRoute } from './proxy-service.js';
 
 const encryptionKey = () => {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) throw new Error('ENCRYPTION_KEY environment variable is not set');
   return key;
 };
+
+export function isPortAvailable(port: number): boolean {
+  if (process.platform === 'darwin') return true;
+  try {
+    const output = execFileSync('ss', ['-tlnH'], { encoding: 'utf-8', timeout: 5000 });
+    for (const line of output.split('\n')) {
+      if (new RegExp(`:${port}\\s`).test(line)) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
 
 export function allocatePort(db: DbClient): number {
   const usedPorts = db
@@ -23,7 +39,7 @@ export function allocatePort(db: DbClient): number {
     .map((r) => r.port);
 
   for (let p = PORT_RANGE_START; p <= PORT_RANGE_END; p++) {
-    if (!usedPorts.includes(p)) return p;
+    if (!usedPorts.includes(p) && isPortAvailable(p)) return p;
   }
   throw new Error(`No available ports in range ${PORT_RANGE_START}-${PORT_RANGE_END}`);
 }
@@ -130,32 +146,6 @@ export function createProject(db: DbClient, data: CreateProjectInput) {
     console.warn(`[project] Failed to create systemd unit for ${data.name}:`, err);
   });
 
-  // Task 7.2 — Caddy route + domain record + DNS verification (fire-and-forget)
-  if (data.domain) {
-    const domain = data.domain;
-    const projectId = created!.id;
-
-    db.insert(domains).values({ projectId, domain, isPrimary: true }).run();
-
-    addRoute(domain, port, false)
-      .then((result) => {
-        if (!result.success) {
-          console.warn(`[project] Failed to add Caddy route for ${domain}:`, result.error);
-          return;
-        }
-
-        // Fire-and-forget DNS verification
-        getServerIp()
-          .then((ip) => verifyDnsWithRetry(db, domain, ip))
-          .catch((err) => {
-            console.warn(`[project] DNS verification failed for ${domain}:`, err);
-          });
-      })
-      .catch((err) => {
-        console.warn(`[project] Failed to add Caddy route for ${domain}:`, err);
-      });
-  }
-
   return created!;
 }
 
@@ -163,50 +153,17 @@ export function updateProject(db: DbClient, id: string, data: UpdateProjectInput
   const existing = db.select().from(projects).where(eq(projects.id, id)).get();
   if (!existing) return null;
 
+  const { domain: _domain, ...updateData } = data;
+
   const updated = db
     .update(projects)
     .set({
-      ...data,
+      ...updateData,
       updatedAt: sql`(datetime('now'))`,
     })
     .where(eq(projects.id, id))
     .returning()
     .get();
-
-  // Task 7.2 — Handle domain change via proxy
-  if (data.domain !== undefined && data.domain !== existing.domain) {
-    const port = existing.port;
-
-    // Remove old route
-    if (existing.domain) {
-      removeRoute(existing.domain).catch((err) => {
-        console.warn(`[project] Failed to remove old Caddy route for ${existing.domain}:`, err);
-      });
-      db.delete(domains).where(eq(domains.domain, existing.domain)).run();
-    }
-
-    // Add new route
-    if (data.domain) {
-      const newDomain = data.domain;
-      db.insert(domains).values({ projectId: id, domain: newDomain, isPrimary: true }).run();
-
-      addRoute(newDomain, port, false)
-        .then((result) => {
-          if (!result.success) {
-            console.warn(`[project] Failed to add Caddy route for ${newDomain}:`, result.error);
-            return;
-          }
-          getServerIp()
-            .then((ip) => verifyDnsWithRetry(db, newDomain, ip))
-            .catch((err) => {
-              console.warn(`[project] DNS verification failed for ${newDomain}:`, err);
-            });
-        })
-        .catch((err) => {
-          console.warn(`[project] Failed to add Caddy route for ${newDomain}:`, err);
-        });
-    }
-  }
 
   return updated!;
 }

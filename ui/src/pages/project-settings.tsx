@@ -40,7 +40,6 @@ export default function ProjectSettingsPage() {
   const [buildCmd, setBuildCmd] = useState('');
   const [startCmd, setStartCmd] = useState('');
   const [outputDir, setOutputDir] = useState('');
-  const [domain, setDomain] = useState('');
 
   useEffect(() => {
     if (!project) return;
@@ -48,7 +47,6 @@ export default function ProjectSettingsPage() {
     setBuildCmd(project.buildCmd ?? '');
     setStartCmd(project.startCmd ?? '');
     setOutputDir(project.outputDir ?? '');
-    setDomain(project.domain ?? '');
   }, [project]);
 
   const updateMutation = useMutation({
@@ -79,7 +77,6 @@ export default function ProjectSettingsPage() {
       buildCmd,
       startCmd,
       outputDir,
-      domain: domain || null,
     });
   };
 
@@ -120,16 +117,6 @@ export default function ProjectSettingsPage() {
           <div className="space-y-2">
             <Label htmlFor="branch">Branch</Label>
             <Input id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="domain">Домен</Label>
-            <Input
-              id="domain"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              placeholder="example.com"
-            />
           </div>
 
           <div className="space-y-2">

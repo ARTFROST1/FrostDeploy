@@ -12,6 +12,7 @@ import DeployConsolePage from './pages/deploy-console';
 import ProjectEnvPage from './pages/project-env';
 import ProjectLogsPage from './pages/project-logs';
 import ProjectSettingsPage from './pages/project-settings';
+import ProjectDomainPage from './pages/project-domain';
 import PlatformSettingsPage from './pages/platform-settings';
 import NotFoundPage from './pages/not-found';
 
@@ -59,6 +60,10 @@ export const router = createBrowserRouter([
           {
             path: 'logs',
             element: <ProjectLogsPage />,
+          },
+          {
+            path: 'domain',
+            element: <ProjectDomainPage />,
           },
           {
             path: 'settings',

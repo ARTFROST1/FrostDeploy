@@ -12,6 +12,7 @@ const TABS = [
   { label: 'Деплои', path: '/deploys' },
   { label: 'Env', path: '/env' },
   { label: 'Логи', path: '/logs' },
+  { label: 'Домен', path: '/domain' },
   { label: 'Настройки', path: '/settings' },
 ] as const;
 

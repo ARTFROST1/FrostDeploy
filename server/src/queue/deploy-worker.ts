@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import type { DbClient } from '@fd/db';
 import type { DeployStep } from '@fd/shared';
@@ -175,6 +176,36 @@ export async function executePipeline(
         await runStep('sync', 'Syncing files', onEvent, async () => {
           await syncFiles(project.srcDir, project.runtimeDir, project.outputDir || 'dist', onLog);
         });
+
+        // 7.5 Pre-restart port check
+        if (process.platform !== 'darwin') {
+          try {
+            const ssOutput = execFileSync('ss', ['-tlnH'], { encoding: 'utf-8', timeout: 5000 });
+            const portInUse = ssOutput
+              .split('\n')
+              .some((line) => new RegExp(`:${project.port}\\s`).test(line));
+            if (portInUse) {
+              let ownService = false;
+              try {
+                execFileSync('systemctl', ['is-active', `frostdeploy-${project.name}`], {
+                  encoding: 'utf-8',
+                  timeout: 5000,
+                });
+                ownService = true;
+              } catch {
+                ownService = false;
+              }
+              if (!ownService) {
+                throw new Error(
+                  `Port ${project.port} is occupied by a non-FrostDeploy process. ` +
+                    `Free the port before deploying.`,
+                );
+              }
+            }
+          } catch (err) {
+            if (err instanceof Error && err.message.startsWith('Port ')) throw err;
+          }
+        }
 
         // 8. Restart (create unit if missing)
         await runStep('restart', 'Restarting service', onEvent, async () => {

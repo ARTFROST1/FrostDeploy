@@ -41,7 +41,6 @@ interface FormData {
   buildCmd: string;
   startCmd: string;
   port: number;
-  domain: string;
   framework: string | null;
   envVars: EnvVar[];
 }
@@ -53,7 +52,6 @@ const INITIAL_FORM: FormData = {
   buildCmd: '',
   startCmd: '',
   port: 3000,
-  domain: '',
   framework: null,
   envVars: [],
 };
@@ -267,15 +265,6 @@ function StepConfig({
           <Input id="port" value={form.port} disabled className="opacity-60" />
           <p className="text-xs text-muted-foreground">Назначается автоматически</p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="domain">Домен (опционально)</Label>
-          <Input
-            id="domain"
-            value={form.domain}
-            onChange={(e) => setForm((p) => ({ ...p, domain: e.target.value }))}
-            placeholder="app.example.com"
-          />
-        </div>
       </div>
     </div>
   );
@@ -335,7 +324,6 @@ function StepReview({ form }: { form: FormData }) {
         <Row label="Команда сборки" value={form.buildCmd || '—'} mono />
         <Row label="Команда запуска" value={form.startCmd || '—'} mono />
         <Row label="Порт" value={String(form.port)} />
-        <Row label="Домен" value={form.domain || '—'} />
         <div className="flex justify-between items-start">
           <span className="text-muted-foreground">Переменные окружения</span>
           <span className="text-right">
@@ -422,7 +410,6 @@ export default function NewProjectPage() {
         repoUrl: form.repoUrl,
         branch: form.branch,
         name: form.name,
-        domain: form.domain || undefined,
         envVars: form.envVars.length > 0 ? form.envVars : undefined,
       }),
     onSuccess: (project) => {
