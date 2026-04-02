@@ -1,8 +1,10 @@
 import type { DbClient } from '@fd/db';
+import { deployLocks } from '@fd/db';
+import { eq } from 'drizzle-orm';
 import type { TriggeredBy } from '@fd/shared';
 import type { SSEEvent } from '../lib/sse.js';
 import { executePipeline } from './deploy-worker.js';
-import { acquireLock, releaseLock, cleanupOrphanedLocks } from '../services/deploy-service.js';
+import { cleanupOrphanedLocks } from '../services/deploy-service.js';
 
 interface Project {
   id: string;
@@ -55,15 +57,17 @@ export function enqueue(
   }
 
   // Check DB lock (handles server-restart edge case)
-  const lockAcquired = acquireLock(db, projectId, '');
-  if (!lockAcquired) {
+  const existingLock = db
+    .select()
+    .from(deployLocks)
+    .where(eq(deployLocks.projectId, projectId))
+    .get();
+  if (existingLock) {
     throw new DeployConflictError({
       projectId,
       startedAt: new Date(),
     });
   }
-  // Release the probe lock — executePipeline acquires its own
-  releaseLock(db, projectId);
 
   const job: DeployJob = {
     projectId,
