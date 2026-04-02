@@ -4,13 +4,14 @@ After=network.target
 
 [Service]
 Type=simple
-User=frostdeploy
+User=root
 WorkingDirectory=<%= runtimeDir %>
-ExecStart=<%= startCmd %>
+ExecStart=/usr/bin/npm start
 Restart=on-failure
 RestartSec=5
 Environment=PORT=<%= port %>
 Environment=NODE_ENV=production
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 <% if (envFilePath) { %>
 EnvironmentFile=<%= envFilePath %>
 <% } %>
