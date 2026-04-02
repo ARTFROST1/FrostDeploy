@@ -1,8 +1,10 @@
 export {
   createProjectSchema,
   updateProjectSchema,
+  detectRepoSchema,
   type CreateProjectInput,
   type UpdateProjectInput,
+  type DetectRepoInput,
 } from './project.js';
 export {
   triggerDeploySchema,

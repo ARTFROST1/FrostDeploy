@@ -27,10 +27,14 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
   });
 
   if (!row) {
-    // No session secret means setup hasn't run — block everything except /api/setup
+    // No session secret means setup hasn't run — tell client setup is required
     return c.json(
-      { success: false, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } },
-      401,
+      {
+        success: false,
+        error: { code: 'SETUP_REQUIRED', message: 'Setup required' },
+        setupRequired: true,
+      },
+      403,
     );
   }
 

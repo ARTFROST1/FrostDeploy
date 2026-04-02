@@ -76,7 +76,8 @@ frostdeploy/
 │   ├── docs.json                   # Реестр документации (навигация)
 │   └── implementation/             # Планы реализации по фазам
 ├── scripts/                        # Скрипты автоматизации
-│   └── setup-dev.sh               # Настройка dev-окружения (git hooks, .env)
+│   ├── install.sh                  # Идемпотентный скрипт установки на VDS (Ubuntu/Debian)
+│   └── frostdeploy.service         # systemd unit для платформы (sandboxing, journal)
 ├── pnpm-workspace.yaml             # Определение воркспейсов pnpm
 ├── package.json                    # Корневой манифест: scripts, devDependencies
 ├── tsconfig.base.json              # Базовый TypeScript-конфиг (наследуется всеми пакетами)
@@ -273,6 +274,8 @@ server/
 │   │   ├── system.ts                       # GET /api/system (CPU, RAM, диск, uptime, версии)
 │   │   ├── settings.ts                     # GET /api/settings, PUT /api/settings, POST /api/setup
 │   │   ├── auth.ts                         # POST /api/auth/login, POST /api/auth/logout, GET /api/auth/check
+│   │   ├── backups.ts                      # GET /api/backups, POST /api/backups,
+│   │   │                                   # POST /api/backups/:id/restore
 │   │   └── index.ts                        # Регистрация всех маршрутов на Hono-приложении
 │   │
 │   ├── services/                           # Бизнес-логика (фабричные функции)
@@ -288,17 +291,24 @@ server/
 │   │   ├── git-service.ts                  # cloneRepo, fetchOrigin, checkoutSha, getCommits (GitHub API)
 │   │   │                                   # Авторизация через PAT, кеширование коммитов (60 сек)
 │   │   ├── detector-service.ts             # detectFramework: анализ package.json, конфиг-файлов
-│   │                                       # Возвращает framework, buildCmd, startCmd, outputDir
-│   │
-│   │   └── settings-service.ts             # Settings CRUD, шифрование чувствительных настроек,
-│   │                                       # проверка setup_completed
+│   │   │                                   # Возвращает framework, buildCmd, startCmd, outputDir
+│   │   ├── settings-service.ts             # Settings CRUD, шифрование чувствительных настроек,
+│   │   │                                   # проверка setup_completed
+│   │   ├── build-service.ts                # executeBuild: npm ci + npm run build
+│   │   │                                   # Проверка build_cmd/output_dir, --ignore-scripts
+│   │   └── backup-service.ts               # SQLite backup/restore: .backup() API, WAL checkpoint,
+│   │                                       # ротация (7 max), auto-backup (24ч), restore + restart
 │   │
 │   ├── middleware/                          # Hono middleware
 │   │   ├── auth.ts                         # authMiddleware: проверка HMAC-SHA256 cookie, TTL 24ч
 │   │   │                                   # Пропускает /api/auth/login, /api/setup
 │   │   ├── error-handler.ts                # onError: глобальная обработка, структурированный JSON-ответ
 │   │   │                                   # Логирование ошибок, stack trace только в dev
-│   │   └── logger.ts                       # Логирование: method, path, status, duration (мс)
+│   │   ├── logger.ts                       # Логирование: method, path, status, duration (мс)
+│   │   ├── rate-limit.ts                   # createRateLimit(max, windowMs): per-IP in-memory rate limiter
+│   │   │                                   # Очистка expired записей, 429 + Retry-After header
+│   │   └── csrf.ts                         # csrfProtection: валидация Origin/Referer хоста
+│   │                                       # Пропускает GET/HEAD/OPTIONS, отключён в dev-режиме
 │   │
 │   ├── lib/                                # Утилиты для работы с внешними системами
 │   │   ├── caddy.ts                        # generateRouteConfig(), generateLogConfig(), generateBaseCaddyfile()
@@ -313,8 +323,9 @@ server/
 │   │   │                                   # signSession(), verifySession() — HMAC-SHA256
 │   │   ├── sse.ts                          # formatSSEEvent(), createDeployStream()
 │   │   │                                   # Утилиты для Server-Sent Events деплоя
-│   │   └── exec.ts                         # execCommand(): обёртка child_process.spawn → Promise
-│   │                                       # Стриминг stdout/stderr, таймаут, логирование
+│   │   ├── exec.ts                         # execCommand(): обёртка child_process.spawn → Promise
+│   │   │                                   # Стриминг stdout/stderr, таймаут, логирование
+│   │   └── sanitize.ts                     # stripHtml(): удаление HTML-тегов из пользовательского ввода
 │   │
 │   ├── queue/                              # Очередь деплоев (in-process)
 │   │   ├── deploy-queue.ts                 # DeployQueue: Map<projectId, DeployJob>

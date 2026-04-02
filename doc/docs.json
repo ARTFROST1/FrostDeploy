@@ -1,7 +1,7 @@
 {
   "project": "FrostDeploy",
   "description": "Реестр внутренней документации проекта FrostDeploy",
-  "updated": "2026-04-01",
+  "updated": "2026-04-02",
   "documents": [
     {
       "id": "prd",
@@ -61,7 +61,7 @@
       "title": "План реализации — обзор",
       "path": "implementation/README.md",
       "phase": 6,
-      "status": "draft",
+      "status": "completed",
       "depends_on": ["implementation"],
       "description": "Индексный файл плана реализации: фазы, зависимости и навигация по разделу"
     }

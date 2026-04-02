@@ -27,6 +27,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         if (authRes.ok) {
           setState('authenticated');
         } else {
+          // Check if server is signalling setup required
+          try {
+            const authData = await authRes.json();
+            if (authData.setupRequired) {
+              setState('needs-setup');
+              return;
+            }
+          } catch {
+            // ignore parse errors
+          }
           setState('unauthenticated');
         }
       } catch {

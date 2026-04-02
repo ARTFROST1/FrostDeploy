@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/status-badge';
 import { FRAMEWORK_ICONS } from '@/lib/constants';
 import { formatRelativeTime } from '@/lib/utils';
+import { useDeployStatus } from '@/hooks/use-deploy-status';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Globe,
@@ -48,7 +49,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project, onDeploy }: ProjectCardProps) {
   const FrameworkIcon = getFrameworkIcon(project.framework);
-  const isDeploying = project.status === 'deploying';
+  const { status, isDeploying } = useDeployStatus(project.id);
 
   return (
     <Link to={`/projects/${project.id}`} className="block">
@@ -73,7 +74,7 @@ export function ProjectCard({ project, onDeploy }: ProjectCardProps) {
           )}
         </div>
 
-        <StatusBadge status={project.status} />
+        <StatusBadge status={status} />
 
         <span className="hidden text-xs text-muted-foreground sm:block">
           {formatRelativeTime(project.updatedAt)}

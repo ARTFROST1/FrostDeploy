@@ -498,8 +498,13 @@ CREATE INDEX idx_projects_port ON projects(port);
 | POST | `/api/setup` | Первоначальная настройка платформы | P0 |
 | GET | `/api/settings` | Получение настроек (маскированные) | P1 |
 | PUT | `/api/settings` | Обновление настроек | P1 |
+| PUT | `/api/settings/password` | Смена пароля администратора | P1 |
+| GET | `/api/settings/setup-status` | Проверка: выполнена ли начальная настройка | P0 |
 | GET | `/api/auth/check` | Проверка статуса аутентификации | P0 |
 | GET | `/health` | Health check (без аутентификации) | P0 |
+| GET | `/api/backups` | Список резервных копий БД | P2 |
+| POST | `/api/backups` | Создание резервной копии БД | P2 |
+| POST | `/api/backups/:id/restore` | Восстановление БД из резервной копии | P2 |
 
 ---
 

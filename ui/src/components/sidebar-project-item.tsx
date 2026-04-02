@@ -2,6 +2,7 @@ import { NavLink } from 'react-router';
 import type { Project } from '@fd/shared';
 import { cn } from '@/lib/utils';
 import { STATUS_COLORS } from '@/lib/constants';
+import { useDeployStatus } from '@/hooks/use-deploy-status';
 
 interface SidebarProjectItemProps {
   project: Project;
@@ -16,8 +17,8 @@ export default function SidebarProjectItem({
   collapsed,
   onClick,
 }: SidebarProjectItemProps) {
-  const isDeploying = project.status === 'deploying';
-  const dotColor = STATUS_COLORS[project.status as keyof typeof STATUS_COLORS] ?? 'bg-zinc-500';
+  const { status, isDeploying } = useDeployStatus(project.id);
+  const dotColor = STATUS_COLORS[status as keyof typeof STATUS_COLORS] ?? 'bg-zinc-500';
 
   return (
     <NavLink
@@ -39,7 +40,7 @@ export default function SidebarProjectItem({
           dotColor,
           isDeploying && 'animate-pulse',
         )}
-        aria-label={`Статус: ${project.status}`}
+        aria-label={`Статус: ${status}`}
       />
 
       {/* Project name */}

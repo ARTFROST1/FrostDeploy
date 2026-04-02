@@ -10,6 +10,16 @@ const STATUS_CODE_MAP: Record<number, string> = {
   500: 'INTERNAL_ERROR',
 };
 
+const FRIENDLY_MESSAGES: Record<number, string> = {
+  400: 'Неверный запрос. Проверьте введённые данные.',
+  401: 'Сессия истекла. Войдите снова.',
+  403: 'Недостаточно прав для этого действия.',
+  404: 'Запрашиваемый ресурс не найден.',
+  409: 'Конфликт данных. Обновите страницу и повторите.',
+  429: 'Слишком много запросов. Подождите немного.',
+  500: 'Внутренняя ошибка сервера. Попробуйте позже.',
+};
+
 export const errorHandler: ErrorHandler = (err, c) => {
   const status = 'status' in err && typeof err.status === 'number' ? err.status : 500;
 
@@ -17,7 +27,9 @@ export const errorHandler: ErrorHandler = (err, c) => {
 
   const code = STATUS_CODE_MAP[status] ?? 'INTERNAL_ERROR';
   const message =
-    status === 500 && process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message;
+    process.env.NODE_ENV === 'production'
+      ? (FRIENDLY_MESSAGES[status] ?? FRIENDLY_MESSAGES[500])
+      : err.message;
 
   return c.json(
     {

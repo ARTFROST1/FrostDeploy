@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fd/shared": "workspace:*",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.1",
     "@tanstack/react-query": "^5.75",
     "class-variance-authority": "^0.7",

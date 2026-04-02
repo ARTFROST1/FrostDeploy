@@ -1,0 +1,30 @@
+[Unit]
+Description=FrostDeploy - Self-hosted deploy platform
+After=network.target caddy.service
+
+[Service]
+Type=simple
+User=frostdeploy
+WorkingDirectory=/opt/frostdeploy
+ExecStart=/usr/bin/node server/dist/index.js
+EnvironmentFile=/opt/frostdeploy/.env
+Restart=on-failure
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=frostdeploy
+
+# Sandboxing
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/opt/frostdeploy/data /opt/frostdeploy/.env
+
+# Resource limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

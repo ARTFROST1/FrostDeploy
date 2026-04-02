@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, AlertCircle } from 'lucide-react';
 
 import { fetchProject, updateProject, deleteProject } from '@/api/projects';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,18 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export default function ProjectSettingsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: project, isLoading } = useQuery({
+  const {
+    data: project,
+    isLoading,
+    error: projectError,
+  } = useQuery({
     queryKey: ['project', id],
     queryFn: () => fetchProject(id!),
     enabled: !!id,
@@ -83,6 +88,18 @@ export default function ProjectSettingsPage() {
       <div className="space-y-6">
         <Skeleton className="h-[360px] w-full rounded-xl" />
         <Skeleton className="h-[140px] w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (projectError) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Ошибка загрузки</AlertTitle>
+          <AlertDescription>{projectError.message}</AlertDescription>
+        </Alert>
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { eq, and } from 'drizzle-orm';
 import { deployments } from '@fd/db';
@@ -190,12 +191,16 @@ app.get('/:id/deploy/stream', (c) => {
   return createDeployStream(c, (send) => subscribeToStream(bridge, send));
 });
 
+const deploymentsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  perPage: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 // GET /:id/deployments — Deploy history (paginated)
-app.get('/:id/deployments', (c) => {
+app.get('/:id/deployments', zValidator('query', deploymentsQuerySchema), (c) => {
   const db = c.get('db');
   const projectId = c.req.param('id');
-  const page = Math.max(1, Number(c.req.query('page')) || 1);
-  const perPage = Math.min(100, Math.max(1, Number(c.req.query('perPage')) || 20));
+  const { page, perPage } = c.req.valid('query');
 
   const result = getDeploymentsByProject(db, projectId, page, perPage);
   return c.json({ success: true, data: result });
@@ -214,11 +219,18 @@ app.get('/:id/deployments/:deployId', (c) => {
   return c.json({ success: true, data: deployment });
 });
 
+const rollbackParamsSchema = z.object({
+  id: z.string().min(1),
+  sha: z
+    .string()
+    .length(40)
+    .regex(/^[0-9a-f]+$/),
+});
+
 // POST /:id/rollback/:sha — Rollback to specific SHA
-app.post('/:id/rollback/:sha', (c) => {
+app.post('/:id/rollback/:sha', zValidator('param', rollbackParamsSchema), (c) => {
   const db = c.get('db');
-  const projectId = c.req.param('id');
-  const sha = c.req.param('sha');
+  const { id: projectId, sha } = c.req.valid('param');
 
   const project = getProject(db, projectId);
   if (!project) {

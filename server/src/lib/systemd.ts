@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import ejs from 'ejs';
 
@@ -46,6 +46,22 @@ export async function createUnit(project: SystemdProject): Promise<void> {
 
   const unitPath = join(UNIT_DIR, `${serviceName(project.name)}.service`);
   writeFileSync(unitPath, unit, 'utf-8');
+
+  execFileSync('systemctl', ['daemon-reload']);
+}
+
+export async function deleteUnit(name: string): Promise<void> {
+  validateName(name);
+
+  if (IS_MAC) {
+    stub(`deleteUnit ${name}`);
+    return;
+  }
+
+  const unitPath = join(UNIT_DIR, `${serviceName(name)}.service`);
+  if (existsSync(unitPath)) {
+    unlinkSync(unitPath);
+  }
 
   execFileSync('systemctl', ['daemon-reload']);
 }

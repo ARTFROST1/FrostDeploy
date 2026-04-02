@@ -93,9 +93,9 @@ app.put('/:id', zValidator('json', updateProjectSchema), (c) => {
 });
 
 // DELETE /:id — Delete project
-app.delete('/:id', (c) => {
+app.delete('/:id', async (c) => {
   const db = c.get('db');
-  const deleted = deleteProject(db, c.req.param('id'));
+  const deleted = await deleteProject(db, c.req.param('id'));
   if (!deleted)
     return c.json(
       { success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } },

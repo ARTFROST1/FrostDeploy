@@ -31,5 +31,13 @@ export const updateProjectSchema = z.object({
   outputDir: z.string().optional(),
 });
 
+export const detectRepoSchema = z.object({
+  repoUrl: z
+    .string()
+    .url('Must be a valid URL')
+    .regex(/github\.com/, 'Must be a GitHub repository URL'),
+});
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+export type DetectRepoInput = z.infer<typeof detectRepoSchema>;

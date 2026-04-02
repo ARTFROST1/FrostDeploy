@@ -4,6 +4,9 @@ import type { DbClient } from '@fd/db';
 import type { CreateProjectInput, UpdateProjectInput, UpdateEnvVarsInput } from '@fd/shared';
 import { PORT_RANGE_START, PORT_RANGE_END } from '@fd/shared';
 import { encrypt, decrypt } from '../lib/crypto.js';
+import { mkdirSync } from 'node:fs';
+import { createUnit, stopService, deleteUnit } from '../lib/systemd.js';
+import { addRoute, removeRoute, getServerIp, verifyDnsWithRetry } from './proxy-service.js';
 
 const encryptionKey = () => {
   const key = process.env.ENCRYPTION_KEY;
@@ -110,11 +113,54 @@ export function createProject(db: DbClient, data: CreateProjectInput) {
       .run();
   }
 
+  // Task 7.3 — Create directories & systemd unit (fire-and-forget)
+  try {
+    mkdirSync(srcDir, { recursive: true });
+    mkdirSync(runtimeDir, { recursive: true });
+  } catch (err) {
+    console.warn(`[project] Failed to create directories for ${data.name}:`, err);
+  }
+
+  createUnit({
+    name: data.name,
+    runtimeDir,
+    startCmd: 'npm start',
+    port,
+  }).catch((err) => {
+    console.warn(`[project] Failed to create systemd unit for ${data.name}:`, err);
+  });
+
+  // Task 7.2 — Caddy route + domain record + DNS verification (fire-and-forget)
+  if (data.domain) {
+    const domain = data.domain;
+    const projectId = created!.id;
+
+    db.insert(domains).values({ projectId, domain, isPrimary: true }).run();
+
+    addRoute(domain, port, false)
+      .then((result) => {
+        if (!result.success) {
+          console.warn(`[project] Failed to add Caddy route for ${domain}:`, result.error);
+          return;
+        }
+
+        // Fire-and-forget DNS verification
+        getServerIp()
+          .then((ip) => verifyDnsWithRetry(db, domain, ip))
+          .catch((err) => {
+            console.warn(`[project] DNS verification failed for ${domain}:`, err);
+          });
+      })
+      .catch((err) => {
+        console.warn(`[project] Failed to add Caddy route for ${domain}:`, err);
+      });
+  }
+
   return created!;
 }
 
 export function updateProject(db: DbClient, id: string, data: UpdateProjectInput) {
-  const existing = db.select({ id: projects.id }).from(projects).where(eq(projects.id, id)).get();
+  const existing = db.select().from(projects).where(eq(projects.id, id)).get();
   if (!existing) return null;
 
   const updated = db
@@ -127,10 +173,70 @@ export function updateProject(db: DbClient, id: string, data: UpdateProjectInput
     .returning()
     .get();
 
+  // Task 7.2 — Handle domain change via proxy
+  if (data.domain !== undefined && data.domain !== existing.domain) {
+    const port = existing.port;
+
+    // Remove old route
+    if (existing.domain) {
+      removeRoute(existing.domain).catch((err) => {
+        console.warn(`[project] Failed to remove old Caddy route for ${existing.domain}:`, err);
+      });
+      db.delete(domains).where(eq(domains.domain, existing.domain)).run();
+    }
+
+    // Add new route
+    if (data.domain) {
+      const newDomain = data.domain;
+      db.insert(domains).values({ projectId: id, domain: newDomain, isPrimary: true }).run();
+
+      addRoute(newDomain, port, false)
+        .then((result) => {
+          if (!result.success) {
+            console.warn(`[project] Failed to add Caddy route for ${newDomain}:`, result.error);
+            return;
+          }
+          getServerIp()
+            .then((ip) => verifyDnsWithRetry(db, newDomain, ip))
+            .catch((err) => {
+              console.warn(`[project] DNS verification failed for ${newDomain}:`, err);
+            });
+        })
+        .catch((err) => {
+          console.warn(`[project] Failed to add Caddy route for ${newDomain}:`, err);
+        });
+    }
+  }
+
   return updated!;
 }
 
-export function deleteProject(db: DbClient, id: string): boolean {
+export async function deleteProject(db: DbClient, id: string): Promise<boolean> {
+  const project = db.select().from(projects).where(eq(projects.id, id)).get();
+  if (!project) return false;
+
+  // Task 7.3 — Stop service & delete systemd unit
+  try {
+    await stopService(project.name);
+  } catch (err) {
+    console.warn(`[project] Failed to stop service for ${project.name}:`, err);
+  }
+  try {
+    await deleteUnit(project.name);
+  } catch (err) {
+    console.warn(`[project] Failed to delete systemd unit for ${project.name}:`, err);
+  }
+
+  // Task 7.2 — Remove Caddy routes for all project domains
+  const projectDomains = db.select().from(domains).where(eq(domains.projectId, id)).all();
+  for (const d of projectDomains) {
+    try {
+      await removeRoute(d.domain);
+    } catch (err) {
+      console.warn(`[project] Failed to remove Caddy route for ${d.domain}:`, err);
+    }
+  }
+
   const result = db.delete(projects).where(eq(projects.id, id)).run();
   return result.changes > 0;
 }

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
-import { Cpu, MemoryStick, HardDrive, FolderGit2, Plus } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, FolderGit2, Plus, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { Project, Deployment } from '@fd/shared';
@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { POLLING_INTERVALS } from '@/lib/constants';
 import { formatRelativeTime, formatDuration, shortSha } from '@/lib/utils';
 
@@ -114,7 +115,11 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const { metrics, isLoading: metricsLoading } = useSystemMetrics();
 
-  const { data: projects, isLoading: projectsLoading } = useQuery({
+  const {
+    data: projects,
+    isLoading: projectsLoading,
+    error: projectsError,
+  } = useQuery({
     queryKey: ['projects'],
     queryFn: fetchProjects,
     refetchInterval: POLLING_INTERVALS.projects,
@@ -197,7 +202,13 @@ export default function DashboardPage() {
       {/* Projects */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Проекты</h2>
-        {projectsLoading ? (
+        {projectsError ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Ошибка загрузки</AlertTitle>
+            <AlertDescription>{projectsError.message}</AlertDescription>
+          </Alert>
+        ) : projectsLoading ? (
           <ProjectsSkeleton />
         ) : projects && projects.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -206,12 +217,19 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Нет проектов.{' '}
-            <Link to="/projects/new" className="text-blue-500 hover:underline">
-              Создать первый проект
-            </Link>
-          </p>
+          <Card className="flex flex-col items-center justify-center py-12 text-center">
+            <FolderGit2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p className="font-medium text-foreground">Нет проектов</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Создайте первый проект, чтобы начать деплой
+            </p>
+            <Button asChild className="mt-4" size="sm">
+              <Link to="/projects/new">
+                <Plus className="h-4 w-4" />
+                Новый проект
+              </Link>
+            </Button>
+          </Card>
         )}
       </section>
 

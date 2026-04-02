@@ -1,28 +1,51 @@
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Globe, ExternalLink, ShieldCheck, Clock, GitBranch, Server } from 'lucide-react';
+import {
+  Globe,
+  ExternalLink,
+  ShieldCheck,
+  Clock,
+  GitBranch,
+  Server,
+  Play,
+  AlertCircle,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { useMemo, useState } from 'react';
 
 import { fetchProject, fetchCommits } from '@/api/projects';
-import { fetchDeployments, triggerDeploy } from '@/api/deploys';
+import { fetchDeployments, triggerDeploy, rollback } from '@/api/deploys';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/status-badge';
 import { CommitCard } from '@/components/commit-card';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { cn, formatRelativeTime, formatDuration, shortSha, truncate } from '@/lib/utils';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { STATUS_COLORS } from '@/lib/constants';
 
 export default function ProjectOverviewPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [rollbackSha, setRollbackSha] = useState<string | null>(null);
 
-  const { data: project, isLoading: projectLoading } = useQuery({
+  const {
+    data: project,
+    isLoading: projectLoading,
+    error: projectError,
+  } = useQuery({
     queryKey: ['project', id],
     queryFn: () => fetchProject(id!),
     enabled: !!id,
   });
 
-  const { data: commits, isLoading: commitsLoading } = useQuery({
+  const {
+    data: commits,
+    isLoading: commitsLoading,
+    error: commitsError,
+  } = useQuery({
     queryKey: ['commits', id],
     queryFn: () => fetchCommits(id!),
     enabled: !!id,
@@ -30,11 +53,33 @@ export default function ProjectOverviewPage() {
 
   const { data: deploymentsData, isLoading: deploysLoading } = useQuery({
     queryKey: ['deployments', id],
-    queryFn: () => fetchDeployments(id!, 1, 1),
+    queryFn: () => fetchDeployments(id!, 1, 50),
     enabled: !!id,
   });
 
   const lastDeploy = deploymentsData?.items?.[0] ?? null;
+
+  // Build a map: SHA → latest deploy info for commit history indicators
+  const deployedShas = useMemo(() => {
+    const map = new Map<string, { status: string; triggeredBy: string }>();
+    if (!deploymentsData?.items) return map;
+    for (const d of deploymentsData.items) {
+      if (!map.has(d.commitSha)) {
+        map.set(d.commitSha, { status: d.status, triggeredBy: d.triggeredBy });
+      }
+    }
+    return map;
+  }, [deploymentsData]);
+
+  // Set of SHAs that had at least one successful deploy
+  const successfulShas = useMemo(() => {
+    const set = new Set<string>();
+    if (!deploymentsData?.items) return set;
+    for (const d of deploymentsData.items) {
+      if (d.status === 'success') set.add(d.commitSha);
+    }
+    return set;
+  }, [deploymentsData]);
 
   const deployMutation = useMutation({
     mutationFn: (sha: string) => triggerDeploy(id!, sha),
@@ -43,9 +88,26 @@ export default function ProjectOverviewPage() {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       queryClient.invalidateQueries({ queryKey: ['deployments', id] });
       queryClient.invalidateQueries({ queryKey: ['commits', id] });
+      navigate(`/projects/${id}/deploys/current`);
     },
     onError: () => {
       toast.error('Не удалось запустить деплой');
+    },
+  });
+
+  const rollbackMutation = useMutation({
+    mutationFn: (sha: string) => rollback(id!, sha),
+    onSuccess: () => {
+      toast.success('Откат запущен');
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+      queryClient.invalidateQueries({ queryKey: ['deployments', id] });
+      queryClient.invalidateQueries({ queryKey: ['commits', id] });
+      setRollbackSha(null);
+      navigate(`/projects/${id}/deploys/current`);
+    },
+    onError: () => {
+      toast.error('Не удалось выполнить откат');
+      setRollbackSha(null);
     },
   });
 
@@ -76,12 +138,37 @@ export default function ProjectOverviewPage() {
     );
   }
 
+  if (projectError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Ошибка загрузки проекта</AlertTitle>
+        <AlertDescription>{projectError.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
   if (!project) return null;
 
   const statusKey = project.status as keyof typeof STATUS_COLORS;
 
   return (
     <div className="space-y-8">
+      {/* ── Deploy header ────────────────────────────────────────── */}
+      <div className="flex items-center justify-end">
+        <Button
+          size="sm"
+          disabled={
+            deployMutation.isPending || rollbackMutation.isPending || project.status === 'deploying'
+          }
+          onClick={() => deployMutation.mutate(commits?.[0]?.sha ?? '')}
+          className="gap-1.5"
+        >
+          <Play className="h-3.5 w-3.5" />
+          Deploy latest
+        </Button>
+      </div>
+
       {/* ── Info cards ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Card 1 — Status */}
@@ -211,7 +298,13 @@ export default function ProjectOverviewPage() {
           <span className="text-sm font-normal text-muted-foreground">({project.branch})</span>
         </h2>
 
-        {commitsLoading ? (
+        {commitsError ? (
+          <Alert variant="warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Не удалось загрузить коммиты</AlertTitle>
+            <AlertDescription>{commitsError.message}</AlertDescription>
+          </Alert>
+        ) : commitsLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-16 w-full rounded-lg" />
@@ -219,20 +312,48 @@ export default function ProjectOverviewPage() {
           </div>
         ) : commits && commits.length > 0 ? (
           <div className="space-y-2">
-            {commits.slice(0, 15).map((commit) => (
-              <CommitCard
-                key={commit.sha}
-                commit={commit}
-                isCurrent={project.currentSha === commit.sha}
-                isDeploying={deployMutation.isPending}
-                onDeploy={(sha) => deployMutation.mutate(sha)}
-              />
-            ))}
+            {commits.slice(0, 15).map((commit) => {
+              const deployInfo = deployedShas.get(commit.sha);
+              const isCurrent = project.currentSha === commit.sha;
+              return (
+                <CommitCard
+                  key={commit.sha}
+                  commit={commit}
+                  isCurrent={isCurrent}
+                  isDeploying={deployMutation.isPending || rollbackMutation.isPending}
+                  onDeploy={(sha) => deployMutation.mutate(sha)}
+                  deployStatus={deployInfo?.status}
+                  hasSuccessfulDeploy={!isCurrent && successfulShas.has(commit.sha)}
+                  onRollback={(sha) => setRollbackSha(sha)}
+                />
+              );
+            })}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Коммитов не найдено</p>
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10 text-center">
+            <GitBranch className="h-8 w-8 text-muted-foreground/30 mb-2" />
+            <p className="font-medium text-foreground">Коммитов не найдено</p>
+            <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+              Проверьте, что GitHub Personal Access Token настроен и репозиторий доступен
+            </p>
+          </div>
         )}
       </section>
+
+      {/* ── Rollback confirm dialog ──────────────────────────────── */}
+      <ConfirmDialog
+        open={!!rollbackSha}
+        onOpenChange={(open) => {
+          if (!open) setRollbackSha(null);
+        }}
+        title="Откат деплоя"
+        description={`Откатить к коммиту ${rollbackSha ? shortSha(rollbackSha) : ''}?`}
+        confirmText="Откатить"
+        onConfirm={() => {
+          if (rollbackSha) rollbackMutation.mutate(rollbackSha);
+        }}
+        loading={rollbackMutation.isPending}
+      />
     </div>
   );
 }

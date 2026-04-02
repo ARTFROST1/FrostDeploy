@@ -228,7 +228,7 @@ export const projects = sqliteTable('projects', {
 | `branch` | TEXT | Нет | `'main'` | Ветка для деплоя |
 | `domain` | TEXT | Да | `NULL` | Привязанный домен (может отсутствовать) |
 | `port` | INTEGER | Нет | — | Порт приложения (4321–4399), уникальный |
-| `framework` | TEXT | Да | `NULL` | Определённый фреймворк: `astro-ssr`, `nextjs`, `nuxt`, `sveltekit`, `remix`, `express`, `static` |
+| `framework` | TEXT | Да | `NULL` | Определённый фреймворк: `astro-ssr`, `astro-static`, `nextjs`, `nuxt`, `sveltekit`, `remix`, `express`, `fastify`, `koa`, `nestjs`, `static` |
 | `build_cmd` | TEXT | Да | `NULL` | Команда сборки, напр. `npm run build` |
 | `start_cmd` | TEXT | Да | `NULL` | Команда запуска, напр. `node dist/server/entry.mjs` |
 | `output_dir` | TEXT | Да | `'dist'` | Директория с артефактами сборки. Default `'dist'` задаётся на уровне Drizzle (`.default('dist')`) и DDL (`DEFAULT 'dist'`) |
