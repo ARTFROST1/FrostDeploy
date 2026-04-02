@@ -4,7 +4,9 @@ const BUILD_TIMEOUT_MS = 600_000; // 10 minutes
 
 /**
  * Install dependencies.
- * Note: lifecycle scripts are allowed because the build step already executes
+ * --include=dev: the host runs with NODE_ENV=production which makes npm skip
+ * devDependencies. Build tools (TypeScript, PostCSS, etc.) live there.
+ * Lifecycle scripts are allowed because the build step already executes
  * arbitrary user code. Frameworks like Next.js need postinstall (e.g. @next/swc).
  */
 export async function installDeps(srcDir: string, onLog?: (line: string) => void): Promise<void> {
@@ -16,7 +18,7 @@ export async function installDeps(srcDir: string, onLog?: (line: string) => void
   };
 
   try {
-    await execCommand('npm', ['ci'], {
+    await execCommand('npm', ['ci', '--include=dev'], {
       cwd: srcDir,
       timeout: BUILD_TIMEOUT_MS,
       onLog: collectLog,
