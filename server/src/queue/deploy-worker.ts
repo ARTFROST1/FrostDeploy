@@ -122,20 +122,13 @@ export async function executePipeline(
   });
 
   try {
-    // 1. Acquire lock
-    const locked = acquireLock(db, project.id, '');
-    if (!locked) {
-      throw new Error('Deploy in progress');
-    }
-
-    // 2. Create deployment record
+    // 1. Create deployment record
     deploymentId = createDeployment(db, project.id, sha, commitMsg, triggeredBy);
 
-    // Update lock with real deploymentId
-    releaseLock(db, project.id);
-    const reLocked = acquireLock(db, project.id, deploymentId);
-    if (!reLocked) {
-      throw new Error('Failed to re-acquire lock');
+    // 2. Acquire lock with real deploymentId
+    const locked = acquireLock(db, project.id, deploymentId);
+    if (!locked) {
+      throw new Error('Deploy in progress');
     }
 
     // 3. Update statuses
