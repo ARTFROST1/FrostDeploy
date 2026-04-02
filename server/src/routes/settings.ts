@@ -12,6 +12,7 @@ import {
   isSetupCompleted,
   getSetting,
 } from '../services/settings-service.js';
+import { verifyDns, getServerIp } from '../services/proxy-service.js';
 
 type Env = {
   Variables: {
@@ -130,6 +131,90 @@ app.put('/password', zValidator('json', changePasswordSchema), async (c) => {
   setSetting(db, 'admin_password_hash', newHash);
 
   return c.json({ success: true, data: { changed: true } });
+});
+
+// --- DNS Records & Verification ---
+
+const IP_REGEX = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+app.get('/dns-records', async (c) => {
+  const db = c.get('db');
+  const domain = getSetting(db, 'platform_domain');
+
+  if (!domain) {
+    return c.json(
+      { success: false, error: { code: 'NOT_CONFIGURED', message: 'Platform domain is not set' } },
+      400,
+    );
+  }
+
+  const serverIp = await getServerIp();
+
+  if (IP_REGEX.test(domain)) {
+    return c.json({
+      success: true,
+      data: { domain, serverIp, isDirect: true, records: [] },
+    });
+  }
+
+  const records: { type: string; name: string; value: string; description: string }[] = [
+    { type: 'A', name: '@', value: serverIp, description: 'Основная A-запись' },
+  ];
+
+  if (!domain.startsWith('*')) {
+    records.push({
+      type: 'A',
+      name: '*',
+      value: serverIp,
+      description: 'Wildcard для субдоменов проектов',
+    });
+  }
+
+  return c.json({
+    success: true,
+    data: { domain, serverIp, isDirect: false, records },
+  });
+});
+
+const dnsVerifySchema = z.object({
+  domain: z.string().optional(),
+});
+
+app.post('/dns-verify', zValidator('json', dnsVerifySchema), async (c) => {
+  const db = c.get('db');
+  const { domain: bodyDomain } = c.req.valid('json');
+  const domain = bodyDomain || getSetting(db, 'platform_domain');
+
+  if (!domain) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'NOT_CONFIGURED',
+          message: 'No domain provided and platform domain is not set',
+        },
+      },
+      400,
+    );
+  }
+
+  if (IP_REGEX.test(domain)) {
+    return c.json(
+      {
+        success: false,
+        error: { code: 'INVALID_DOMAIN', message: 'Cannot verify DNS for an IP address' },
+      },
+      400,
+    );
+  }
+
+  const serverIp = await getServerIp();
+  const result = await verifyDns(domain, serverIp);
+
+  return c.json({
+    success: true,
+    data: { domain, verified: result.verified, actualIp: result.actualIp, serverIp },
+  });
 });
 
 export default app;

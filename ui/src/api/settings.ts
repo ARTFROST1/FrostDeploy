@@ -18,3 +18,32 @@ export function updateSettings(data: Partial<PlatformSettings>) {
 export function checkSetupStatus() {
   return api.get<{ completed: boolean }>('/api/settings/setup-status');
 }
+
+export interface DnsRecord {
+  type: string;
+  name: string;
+  value: string;
+  description: string;
+}
+
+export interface DnsRecordsResponse {
+  domain: string;
+  serverIp: string;
+  isDirect: boolean;
+  records: DnsRecord[];
+}
+
+export interface DnsVerifyResponse {
+  domain: string;
+  verified: boolean;
+  actualIp?: string;
+  serverIp: string;
+}
+
+export function fetchDnsRecords() {
+  return api.get<DnsRecordsResponse>('/api/settings/dns-records');
+}
+
+export function verifyDns(domain?: string) {
+  return api.post<DnsVerifyResponse>('/api/settings/dns-verify', { domain });
+}

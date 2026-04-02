@@ -232,6 +232,9 @@ function StepGitHub({
 
 /* ---------- Step 3: Domain ---------- */
 
+const FQDN_RE = /^[^\s]+\.[^\s]+$/;
+const IPV4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+
 function StepDomain({
   platformDomain,
   setPlatformDomain,
@@ -245,30 +248,51 @@ function StepDomain({
   onBack: () => void;
   loading: boolean;
 }) {
-  const valid = platformDomain.length > 0;
+  const [useIp, setUseIp] = useState(false);
+
+  const valid = useIp
+    ? IPV4_RE.test(platformDomain.trim())
+    : platformDomain.trim().length > 0 && FQDN_RE.test(platformDomain.trim());
+
+  const handleToggle = () => {
+    setPlatformDomain('');
+    setUseIp((prev) => !prev);
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Домен платформы</h2>
+        <h2 className="text-xl font-semibold">{useIp ? 'IP-адрес сервера' : 'Домен платформы'}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Укажите домен, по которому будет доступен FrostDeploy
+          {useIp
+            ? 'Укажите IP-адрес, по которому будет доступен FrostDeploy'
+            : 'Укажите домен, по которому будет доступен FrostDeploy'}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="platformDomain">Домен (FQDN)</Label>
+        <Label htmlFor="platformDomain">{useIp ? 'IPv4-адрес' : 'Домен (FQDN)'}</Label>
         <Input
           id="platformDomain"
           type="text"
           value={platformDomain}
           onChange={(e) => setPlatformDomain(e.target.value)}
-          placeholder="deploy.example.com"
+          placeholder={useIp ? '203.31.40.195' : 'deploy.example.com'}
         />
-        <p className="text-xs text-muted-foreground">
-          Убедитесь, что DNS-запись указывает на IP-адрес вашего сервера
+        <p className={cn('text-xs text-muted-foreground', useIp && 'text-amber-600')}>
+          {useIp
+            ? 'Вы сможете добавить домен позже в настройках платформы'
+            : 'Убедитесь, что DNS-запись указывает на IP-адрес вашего сервера'}
         </p>
       </div>
+
+      <button
+        type="button"
+        className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+        onClick={handleToggle}
+      >
+        {useIp ? 'У меня есть домен' : 'У меня нет домена'}
+      </button>
 
       <div className="flex justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>
