@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import type { DbClient } from '@fd/db';
 import type { DeployStep } from '@fd/shared';
 import { DEPLOY_TIMEOUT_MS, HEALTH_CHECK_RETRIES, HEALTH_CHECK_INTERVAL_MS } from '@fd/shared';
@@ -148,7 +149,7 @@ export async function executePipeline(
       (async () => {
         // 4. Fetch / Clone
         await runStep('fetch', 'Fetching source', onEvent, async () => {
-          if (existsSync(project.srcDir)) {
+          if (existsSync(path.join(project.srcDir, '.git'))) {
             await fetchOrigin(project.srcDir);
           } else {
             await cloneRepo(project.repoUrl, undefined, project.srcDir);
