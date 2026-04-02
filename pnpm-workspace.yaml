@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*'
+  - 'server'
+  - 'ui'
+allowBuilds:
+  better-sqlite3: false
+  esbuild: false

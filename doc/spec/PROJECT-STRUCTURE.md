@@ -197,6 +197,8 @@ packages/db/
 │   │   └── 0000_initial.sql            # Первая миграция: CREATE TABLE × 6, индексы
 │   ├── client.ts                       # createDb(): фабрика подключения SQLite + WAL PRAGMA
 │   ├── seed.ts                         # Seed-данные для dev: 2 проекта, 5 деплоев, env-переменные
+│   ├── utils.ts                        # randomHex(bytes) — утилита генерации hex-ID
+│   ├── migrate.ts                      # CLI-скрипт запуска миграций (drizzle-orm migrator)
 │   └── index.ts                        # Barrel: export { createDb, schema, relations }
 ├── drizzle.config.ts                   # Конфигурация drizzle-kit: dialect, schema path, out dir
 ├── package.json                        # name: "@fd/db", deps: drizzle-orm, better-sqlite3, @fd/shared
@@ -211,6 +213,8 @@ packages/db/
 | `client.ts` | Создаёт подключение `better-sqlite3` → Drizzle ORM. Устанавливает PRAGMA: `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`, `foreign_keys=ON`, `cache_size=-20000`, `temp_store=MEMORY` |
 | `seed.ts` | Генерирует тестовые данные: 2 проекта (Astro SSR, Express API), 5 деплоев, 3 env-переменных. Используется скриптом `pnpm db:seed` |
 | `relations.ts` | Декларативные связи Drizzle: `projects` 1→N `deployments`, `projects` 1→N `env_variables`, `projects` 1→N `domains`, `projects` 1→1 `deploy_locks` |
+| `utils.ts` | `randomHex(bytes)` — генерация hex-строк для ID сущностей |
+| `migrate.ts` | CLI-скрипт запуска миграций через `drizzle-orm/better-sqlite3/migrator` |
 | `migrations/` | Только добавление файлов, никогда не редактирование существующих. Каждая миграция — атомарная |
 
 ### package.json
@@ -261,13 +265,14 @@ server/
 │   ├── routes/                             # HTTP-обработчики (тонкий слой)
 │   │   ├── projects.ts                     # GET /api/projects, POST /api/projects, PUT /api/projects/:id,
 │   │   │                                   # DELETE /api/projects/:id, GET /api/projects/:id/commits,
-│   │   │                                   # POST /api/detect
+│   │   │                                   # POST /api/projects/detect
 │   │   ├── deploys.ts                      # POST /api/projects/:id/deploy, GET /api/projects/:id/deploy/stream (SSE),
 │   │   │                                   # GET /api/projects/:id/deployments, GET /api/projects/:id/deployments/:deployId,
-│   │   │                                   # POST /api/projects/:id/deploys/:deployId/cancel
+│   │   │                                   # POST /api/projects/:id/rollback/:sha,
+│   │   │                                   # POST /api/projects/:id/deploys/:deployId/cancel  ⚠️ Phase 3+
 │   │   ├── system.ts                       # GET /api/system (CPU, RAM, диск, uptime, версии)
 │   │   ├── settings.ts                     # GET /api/settings, PUT /api/settings, POST /api/setup
-│   │   ├── auth.ts                         # POST /api/auth/login, DELETE /api/auth/logout
+│   │   ├── auth.ts                         # POST /api/auth/login, POST /api/auth/logout, GET /api/auth/check
 │   │   └── index.ts                        # Регистрация всех маршрутов на Hono-приложении
 │   │
 │   ├── services/                           # Бизнес-логика (фабричные функции)
@@ -275,14 +280,18 @@ server/
 │   │   │                                   # Создание директорий, systemd-юнита, Caddy-конфига
 │   │   ├── deploy-service.ts               # executePipeline: fetch → checkout → install → build → sync → restart → health
 │   │   │                                   # SSE-стриминг шагов, запись в deployments, управление lock
-│   │   ├── proxy-service.ts                # generateCaddyConfig, addRoute, removeRoute, verifyDns
+│   │   ├── proxy-service.ts                # addRoute, removeRoute, getRoutes, checkSslStatus,
+│   │   │                                   # verifyDns, verifyDnsWithRetry, getServerIp
 │   │   │                                   # Управление Caddy через Admin API (http://localhost:2019)
 │   │   ├── system-service.ts               # getMetrics: парсинг /proc/stat, /proc/meminfo, df
 │   │   │                                   # getServiceStatus: systemctl status каждого проекта
 │   │   ├── git-service.ts                  # cloneRepo, fetchOrigin, checkoutSha, getCommits (GitHub API)
 │   │   │                                   # Авторизация через PAT, кеширование коммитов (60 сек)
-│   │   └── detector-service.ts             # detectFramework: анализ package.json, конфиг-файлов
+│   │   ├── detector-service.ts             # detectFramework: анализ package.json, конфиг-файлов
 │   │                                       # Возвращает framework, buildCmd, startCmd, outputDir
+│   │
+│   │   └── settings-service.ts             # Settings CRUD, шифрование чувствительных настроек,
+│   │                                       # проверка setup_completed
 │   │
 │   ├── middleware/                          # Hono middleware
 │   │   ├── auth.ts                         # authMiddleware: проверка HMAC-SHA256 cookie, TTL 24ч
@@ -292,7 +301,8 @@ server/
 │   │   └── logger.ts                       # Логирование: method, path, status, duration (мс)
 │   │
 │   ├── lib/                                # Утилиты для работы с внешними системами
-│   │   ├── caddy.ts                        # addRoute(), removeRoute(), reloadConfig()
+│   │   ├── caddy.ts                        # generateRouteConfig(), generateLogConfig(), generateBaseCaddyfile()
+│   │   │                                   # validateConfig(), reloadCaddy(), getCaddyStatus()
 │   │   │                                   # HTTP-запросы к Caddy Admin API (localhost:2019)
 │   │   ├── systemd.ts                      # createUnit(), start(), stop(), restart(), status(), readLogs()
 │   │   │                                   # Обёртки для systemctl и journalctl через child_process
@@ -332,7 +342,8 @@ server/
 | Метод | Путь | Файл | Описание |
 |---|---|---|---|
 | POST | `/api/auth/login` | `auth.ts` | Авторизация по паролю → HMAC-cookie |
-| DELETE | `/api/auth/logout` | `auth.ts` | Завершение сессии |
+| POST | `/api/auth/logout` | `auth.ts` | Завершение сессии |
+| GET | `/api/auth/check` | `auth.ts` | Проверка статуса аутентификации |
 | POST | `/api/setup` | `settings.ts` | Первоначальная настройка (wizard) |
 | GET | `/api/settings` | `settings.ts` | Глобальные настройки |
 | PUT | `/api/settings` | `settings.ts` | Обновление настроек |
@@ -341,17 +352,19 @@ server/
 | GET | `/api/projects/:id` | `projects.ts` | Детали проекта |
 | PUT | `/api/projects/:id` | `projects.ts` | Обновление проекта |
 | DELETE | `/api/projects/:id` | `projects.ts` | Удаление проекта (каскад) |
-| POST | `/api/detect` | `projects.ts` | Автоопределение фреймворка по repo URL |
+| POST | `/api/projects/detect` | `projects.ts` | Автоопределение фреймворка по repo URL |
 | GET | `/api/projects/:id/commits` | `projects.ts` | Список коммитов (GitHub API) |
 | POST | `/api/projects/:id/deploy` | `deploys.ts` | Запуск деплоя (SHA опционально) |
 | GET | `/api/projects/:id/deploy/stream` | `deploys.ts` | SSE-стрим логов активного деплоя |
 | GET | `/api/projects/:id/deployments` | `deploys.ts` | История деплоев (пагинация) |
 | GET | `/api/projects/:id/deployments/:did` | `deploys.ts` | Детали деплоя + полный лог |
-| POST | `/api/projects/:id/deploys/:did/cancel` | `deploys.ts` | Отмена активного деплоя |
-| GET | `/api/projects/:id/logs` | `system.ts` | Логи journalctl проекта |
+| POST | `/api/projects/:id/rollback/:sha` | `deploys.ts` | Откат к предыдущему SHA |
+| POST | `/api/projects/:id/deploys/:did/cancel` | `deploys.ts` | Отмена активного деплоя *(Phase 3+, не реализовано)* |
+| GET | `/api/system/logs/:serviceName` | `system.ts` | Логи journalctl сервиса |
 | GET | `/api/projects/:id/env` | `projects.ts` | Env-переменные проекта |
 | PUT | `/api/projects/:id/env` | `projects.ts` | Обновление env-переменных |
 | GET | `/api/system` | `system.ts` | Системные метрики (CPU, RAM, диск) |
+| GET | `/health` | `index.ts` | Health check (без аутентификации) |
 
 ### package.json
 
@@ -408,14 +421,15 @@ ui/
 │   │   ├── login.tsx                       # /login — авторизация по паролю
 │   │   ├── setup.tsx                       # /setup — мастер настройки (3 шага: пароль, PAT, домен)
 │   │   ├── dashboard.tsx                   # / — список проектов + MetricCards (CPU, RAM, диск)
-│   │   ├── project-new.tsx                 # /projects/new — wizard создания (4 шага: repo, config, env, review)
+│   │   ├── new-project.tsx                 # /projects/new — wizard создания (4 шага: repo, config, env, review)
 │   │   ├── project-overview.tsx            # /projects/:id — обзор: статус, домен, коммиты, последний деплой
 │   │   ├── project-deploys.tsx             # /projects/:id/deploys — таблица истории деплоев (пагинация)
 │   │   ├── deploy-console.tsx              # /projects/:id/deploys/:deployId — SSE-лог в терминальном стиле
 │   │   ├── project-env.tsx                 # /projects/:id/env — CRUD переменных окружения
 │   │   ├── project-logs.tsx                # /projects/:id/logs — journalctl логи (polling 5 сек)
 │   │   ├── project-settings.tsx            # /projects/:id/settings — конфигурация + Danger Zone
-│   │   └── settings.tsx                    # /settings — PAT, пароль, информация о сервере
+│   │   ├── platform-settings.tsx           # /settings — PAT, пароль, информация о сервере
+│   │   └── not-found.tsx                   # 404 — страница для несуществующих маршрутов
 │   │
 │   ├── components/                         # Переиспользуемые компоненты
 │   │   ├── ui/                             # shadcn/ui — копируемые примитивы (Radix + Tailwind)
@@ -448,6 +462,8 @@ ui/
 │   │   ├── confirm-dialog.tsx              # ConfirmDialog: деструктивные действия, опционально requireTyping
 │   │   ├── sidebar.tsx                     # Sidebar: логотип, навигация, динамический список проектов
 │   │   ├── sidebar-project-item.tsx        # SidebarProjectItem: проект в sidebar со статусной иконкой
+│   │   ├── auth-guard.tsx                  # AuthGuard: проверка setup-status и auth, редиректы
+│   │   ├── project-layout.tsx              # ProjectLayout: layout страницы проекта с табами
 │   │   └── app-layout.tsx                  # AppLayout: sidebar + main content area + breadcrumbs
 │   │
 │   ├── api/                                # API-клиент (Hono RPC, типизированный)
@@ -461,11 +477,12 @@ ui/
 │   ├── hooks/                              # React-хуки
 │   │   ├── use-sse.ts                      # useSSE(url): подписка на SSE-стрим, автореконнект
 │   │   ├── use-deploy-status.ts            # useDeployStatus(projectId): текущий деплой проекта
-│   │   └── use-system-metrics.ts           # useSystemMetrics(): polling метрик каждые 10 сек
+│   │   ├── use-system-metrics.ts           # useSystemMetrics(): polling метрик каждые 10 сек
+│   │   └── use-sidebar.ts                  # useSidebar(): управление состоянием sidebar (open/collapsed/hidden)
 │   │
 │   ├── lib/                                # Утилиты
-│   │   ├── utils.ts                        # cn() = clsx + tailwind-merge; formatRelativeTime(); formatDuration()
-│   │   └── constants.ts                    # POLLING_INTERVALS, FRAMEWORK_ICONS (SVG mapping)
+│   │   ├── utils.ts                        # cn() = clsx + tailwind-merge; formatRelativeTime(); formatDuration(); truncate(); shortSha()
+│   │   └── constants.ts                    # POLLING_INTERVALS, FRAMEWORK_ICONS, STATUS_COLORS, STATUS_TEXT_COLORS
 │   │
 │   ├── styles/                             # Стили
 │   │   └── globals.css                     # @import "tailwindcss"; CSS-переменные (--background, --accent, etc.)
@@ -489,14 +506,14 @@ ui/
 | `/login` | `login.tsx` | Full-screen (без sidebar) |
 | `/setup` | `setup.tsx` | Full-screen (без sidebar) |
 | `/` | `dashboard.tsx` | AppLayout (sidebar + content) |
-| `/projects/new` | `project-new.tsx` | AppLayout |
+| `/projects/new` | `new-project.tsx` | AppLayout |
 | `/projects/:id` | `project-overview.tsx` | AppLayout + Tabs |
 | `/projects/:id/deploys` | `project-deploys.tsx` | AppLayout + Tabs |
 | `/projects/:id/deploys/:deployId` | `deploy-console.tsx` | AppLayout |
 | `/projects/:id/env` | `project-env.tsx` | AppLayout + Tabs |
 | `/projects/:id/logs` | `project-logs.tsx` | AppLayout + Tabs |
 | `/projects/:id/settings` | `project-settings.tsx` | AppLayout + Tabs |
-| `/settings` | `settings.tsx` | AppLayout |
+| `/settings` | `platform-settings.tsx` | AppLayout |
 
 ### package.json
 
@@ -1091,7 +1108,7 @@ ui/
 - Dashboard (FR-100—102) → `dashboard.tsx` + `metric-card.tsx` + `project-card.tsx`
 - Project Management (FR-200—207) → `project-service.ts` + `projects.ts` (routes)
 - Deploy Engine (FR-300—307) → `deploy-service.ts` + `deploy-queue.ts` + `deploy-worker.ts`
-- Proxy Manager (FR-400—404) → `proxy-service.ts` + `caddy.ts`
+- Proxy Manager (FR-400—404) → `proxy-service.ts` + `caddy.ts` *(⚠️ Phase 3 — файлы ещё не созданы)*
 - Monitoring (FR-500—502) → `system-service.ts` + `system.ts` (routes)
 - Auth (FR-600—603) → `auth.ts` (routes) + `auth.ts` (middleware) + `crypto.ts`
 - Setup Wizard (FR-700—702) → `setup.tsx` + `settings.ts` (routes)

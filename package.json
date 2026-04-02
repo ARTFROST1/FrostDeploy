@@ -1,0 +1,45 @@
+{
+  "name": "frostdeploy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'TODO: dev script'",
+    "build": "pnpm -r run build",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @fd/db run migrate",
+    "db:seed": "pnpm --filter @fd/db run seed",
+    "db:studio": "pnpm --filter @fd/db run studio",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "typescript": "^5.7",
+    "vitest": "^3.1",
+    "eslint": "^9.24",
+    "prettier": "^3.5",
+    "@typescript-eslint/eslint-plugin": "^8.30",
+    "@typescript-eslint/parser": "^8.30",
+    "typescript-eslint": "^8.30",
+    "eslint-plugin-react": "^7.37",
+    "husky": "^9.1",
+    "lint-staged": "^15.5"
+  },
+  "lint-staged": {
+    "*.ts": "eslint --fix",
+    "*.tsx": "eslint --fix",
+    "*.{ts,tsx,json,md}": "prettier --write"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  }
+}

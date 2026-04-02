@@ -1,7 +1,7 @@
 {
   "project": "FrostDeploy",
   "description": "Реестр внутренней документации проекта FrostDeploy",
-  "updated": "2026-03-31",
+  "updated": "2026-04-01",
   "documents": [
     {
       "id": "prd",
@@ -14,7 +14,7 @@
     {
       "id": "tech-stack",
       "title": "Технологический стек",
-      "path": "TECH-STACK.md",
+      "path": "spec/TECH-STACK.md",
       "phase": 2,
       "status": "completed",
       "depends_on": ["prd"],
@@ -23,7 +23,7 @@
     {
       "id": "database",
       "title": "Схема базы данных",
-      "path": "DATABASE.md",
+      "path": "spec/DATABASE.md",
       "phase": 3,
       "status": "completed",
       "depends_on": ["prd", "tech-stack"],
@@ -32,7 +32,7 @@
     {
       "id": "ui-ux",
       "title": "UI/UX спецификация",
-      "path": "UI-UX.md",
+      "path": "spec/UI-UX.md",
       "phase": 4,
       "status": "completed",
       "depends_on": ["prd", "tech-stack"],
@@ -41,7 +41,7 @@
     {
       "id": "project-structure",
       "title": "Структура проекта",
-      "path": "PROJECT-STRUCTURE.md",
+      "path": "spec/PROJECT-STRUCTURE.md",
       "phase": 5,
       "status": "completed",
       "depends_on": ["prd", "tech-stack", "database", "ui-ux"],
@@ -55,19 +55,28 @@
       "status": "completed",
       "depends_on": ["prd", "tech-stack", "database", "ui-ux", "project-structure"],
       "description": "Пошаговый план реализации по фазам с acceptance criteria"
+    },
+    {
+      "id": "implementation-overview",
+      "title": "План реализации — обзор",
+      "path": "implementation/README.md",
+      "phase": 6,
+      "status": "draft",
+      "depends_on": ["implementation"],
+      "description": "Индексный файл плана реализации: фазы, зависимости и навигация по разделу"
     }
   ],
   "research": [
     {
       "id": "research-platform",
       "title": "Исследование платформ деплоя",
-      "path": "../DEPLOY-PLATFORM-RESEARCH.md",
+      "path": "analysis/DEPLOY-PLATFORM-RESEARCH.md",
       "status": "completed"
     },
     {
       "id": "research-code",
       "title": "Анализ кода конкурентов",
-      "path": "../COMPETITORS-CODE-ANALYSIS.md",
+      "path": "analysis/COMPETITORS-CODE-ANALYSIS.md",
       "status": "completed"
     }
   ]

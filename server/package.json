@@ -1,0 +1,29 @@
+{
+  "name": "@fd/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@fd/db": "workspace:*",
+    "@fd/shared": "workspace:*",
+    "@hono/node-server": "^1.14",
+    "@hono/zod-validator": "^0.5",
+    "better-sqlite3": "^11.8",
+    "drizzle-orm": "^0.39",
+    "ejs": "^5.0.1",
+    "hono": "^4.7",
+    "zod": "^3.24"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6",
+    "@types/ejs": "^3.1.5",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.19"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@fd/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fd/shared": "workspace:*",
+    "@radix-ui/react-slot": "^1.1",
+    "@tanstack/react-query": "^5.75",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2.1",
+    "lucide-react": "^0.475",
+    "react": "^19.1",
+    "react-dom": "^19.1",
+    "react-router": "^7.5",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1",
+    "@types/react": "^19.1",
+    "@types/react-dom": "^19.1",
+    "@vitejs/plugin-react": "^4.4",
+    "tailwindcss": "^4.1",
+    "vite": "^6.3"
+  }
+}

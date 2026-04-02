@@ -488,11 +488,18 @@ CREATE INDEX idx_projects_port ON projects(port);
 | GET | `/api/projects/:id/deploy/stream` | SSE-стрим логов текущего деплоя | P0 |
 | GET | `/api/projects/:id/commits` | Список коммитов (GitHub API) | P0 |
 | GET | `/api/projects/:id/deployments` | История деплоев | P0 |
-| GET | `/api/projects/:id/logs` | Логи journalctl | P1 |
+| GET | `/api/projects/:id/deployments/:deployId` | Детали деплоя | P0 |
+| POST | `/api/projects/:id/rollback/:sha` | Откат к предыдущему SHA | P1 |
+| GET | `/api/system/logs/:serviceName` | Логи journalctl сервиса | P1 |
 | GET | `/api/projects/:id/env` | Получение env-переменных (маскированные) | P0 |
 | PUT | `/api/projects/:id/env` | Обновление env-переменных | P0 |
 | GET | `/api/system` | Системные метрики (CPU, RAM, disk) | P1 |
-| POST | `/api/detect` | Детекция фреймворка по repo URL | P0 |
+| POST | `/api/projects/detect` | Детекция фреймворка по repo URL | P0 |
+| POST | `/api/setup` | Первоначальная настройка платформы | P0 |
+| GET | `/api/settings` | Получение настроек (маскированные) | P1 |
+| PUT | `/api/settings` | Обновление настроек | P1 |
+| GET | `/api/auth/check` | Проверка статуса аутентификации | P0 |
+| GET | `/health` | Health check (без аутентификации) | P0 |
 
 ---
 

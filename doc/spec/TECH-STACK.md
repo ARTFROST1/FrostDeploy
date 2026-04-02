@@ -214,7 +214,7 @@ PRAGMA temp_store = MEMORY;
 **Установка:**
 ```bash
 pnpm add drizzle-orm better-sqlite3
-pnpm add -D drizzle-kit @types/better-sqlite3 drizzle-zod
+pnpm add -D drizzle-kit @types/better-sqlite3
 ```
 
 ### 3.5. Очередь задач деплоя
@@ -714,7 +714,7 @@ npm ci --ignore-scripts
 
 | Параметр | Значение |
 |---|---|
-| **Менеджер пакетов** | pnpm 9.x |
+| **Менеджер пакетов** | pnpm 10.x |
 | **Структура** | pnpm workspaces (монорепо) |
 
 **Структура проекта:**
@@ -725,32 +725,36 @@ frostdeploy/
 ├── package.json              # Корневой: scripts, devDependencies
 ├── tsconfig.base.json        # Базовый TypeScript-конфиг
 │
+├── server/                   # Backend: Hono + Drizzle + SQLite
+│   ├── package.json
+│   ├── tsconfig.json         # extends ../tsconfig.base.json
+│   └── src/
+│       ├── index.ts
+│       ├── lib/
+│       ├── routes/
+│       ├── services/
+│       ├── middleware/
+│       ├── queue/
+│       └── templates/
+│
+├── ui/                       # Frontend: React + Vite + Tailwind
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       ├── index.ts
+│       ├── pages/
+│       └── components/
+│
 ├── packages/
-│   ├── server/               # Backend: Hono + Drizzle + SQLite
+│   ├── db/                   # Drizzle-схема, миграции (drizzle-kit)
 │   │   ├── package.json
-│   │   ├── tsconfig.json     # extends ../../tsconfig.base.json
+│   │   ├── drizzle.config.ts
 │   │   └── src/
-│   │       ├── index.ts
-│   │       ├── db/
-│   │       ├── api/
-│   │       ├── engine/
-│   │       └── proxy/
-│   │
-│   ├── web/                  # Frontend: React + Vite + Tailwind
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── vite.config.ts
-│   │   └── src/
-│   │       ├── App.tsx
-│   │       ├── pages/
-│   │       └── components/
 │   │
 │   └── shared/               # Общие типы, Zod-схемы, утилиты
 │       ├── package.json
 │       ├── tsconfig.json
 │       └── src/
-│           ├── types.ts
-│           └── schemas.ts    # Zod-схемы (из drizzle-zod)
 │
 ├── templates/
 │   └── systemd.service.ejs
@@ -763,6 +767,8 @@ frostdeploy/
 ```yaml
 packages:
   - "packages/*"
+  - "server"
+  - "ui"
 ```
 
 **Обоснование pnpm по сравнению с npm / yarn:**
@@ -796,10 +802,10 @@ packages:
 }
 ```
 
-**packages/server/tsconfig.json:**
+**server/tsconfig.json:**
 ```json
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
@@ -809,10 +815,10 @@ packages:
 }
 ```
 
-**packages/web/tsconfig.json:**
+**ui/tsconfig.json:**
 ```json
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
@@ -860,7 +866,7 @@ export default tseslint.config(
 
 **Установка:**
 ```bash
-pnpm add -D vitest @vitest/coverage-v8
+pnpm add -D vitest
 ```
 
 **Скрипты:**
@@ -889,19 +895,19 @@ pnpm add -D vitest @vitest/coverage-v8
               │             │              │
               ▼             ▼              ▼
      ┌────────────┐  ┌───────────┐  ┌──────────┐
-     │  @fd/server │  │ @fd/web   │  │ @fd/shared│
-     │  (backend)  │  │ (frontend)│  │ (types)   │
+     │  server     │  │ ui        │  │ packages/│
+     │  (backend)  │  │ (frontend)│  │ shared   │
      └──────┬─────┘  └─────┬─────┘  └─────┬────┘
             │               │              │
             │               │       ┌──────┴──────┐
             │               │       │  zod        │
             │               │       │  (schemas)  │
-            │               │       └──────┬──────┘
-            │               │              │
-     ┌──────┴──────┐  ┌────┴────┐   ┌─────┴─────┐
-     │ hono        │  │ react   │   │ drizzle-  │
-     │ @hono/node  │  │ react-  │   │ zod       │
-     │ @hono/zod   │  │ dom     │   └───────────┘
+            │               │       └─────────────┘
+            │               │
+     ┌──────┴──────┐  ┌────┴────┐
+     │ hono        │  │ react   │
+     │ @hono/node  │  │ react-  │
+     │ @hono/zod   │  │ dom     │
      └──────┬──────┘  ├─────────┤
             │         │ tailwind│
      ┌──────┴──────┐  │ shadcn/ │
@@ -913,21 +919,23 @@ pnpm add -D vitest @vitest/coverage-v8
                       │ query   │
                       └─────────┘
 
+packages/db:
+└── drizzle-kit (миграции)
+
 Общие devDependencies (корень):
 ├── typescript 5.7+
 ├── vitest 3.x
 ├── eslint 9.x
 ├── prettier 3.x
 ├── husky 9.x
-├── lint-staged 15.x
-└── drizzle-kit (миграции)
+└── lint-staged 15.x
 ```
 
 ---
 
 ## 10. Таблица всех зависимостей
 
-### Backend (`packages/server`)
+### Backend (`server/`)
 
 | Пакет | Версия | Назначение | Лицензия |
 |---|---|---|---|
@@ -937,32 +945,42 @@ pnpm add -D vitest @vitest/coverage-v8
 | `drizzle-orm` | ^0.39 | ORM / query builder для SQLite | Apache-2.0 |
 | `better-sqlite3` | ^11.8 | Нативный SQLite-драйвер (N-API) | MIT |
 | `zod` | ^3.24 | Валидация и типизация данных | MIT |
-| `ejs` | ^3.1 | Шаблонизация systemd-юнитов | Apache-2.0 |
-| `nanoid` | ^5.1 | Генерация коротких уникальных ID | MIT |
+| `ejs` | ^5.0 | Шаблонизация systemd-юнитов | Apache-2.0 |
 
 **Установка:**
 ```bash
-cd packages/server
-pnpm add hono @hono/node-server @hono/zod-validator drizzle-orm better-sqlite3 zod ejs nanoid
+cd server
+pnpm add hono @hono/node-server @hono/zod-validator drizzle-orm better-sqlite3 zod ejs
 ```
 
-### Backend devDependencies
+### Backend devDependencies (`server/`)
 
 | Пакет | Версия | Назначение | Лицензия |
 |---|---|---|---|
-| `drizzle-kit` | ^0.30 | Генерация SQL-миграций из TS-схемы | MIT |
-| `drizzle-zod` | ^0.7 | Генерация Zod-схем из Drizzle-схемы | MIT |
 | `@types/better-sqlite3` | ^7.6 | TypeScript-типы для better-sqlite3 | MIT |
 | `@types/ejs` | ^3.1 | TypeScript-типы для EJS | MIT |
+| `@types/node` | ^25.5 | TypeScript-типы для Node.js | MIT |
 | `tsx` | ^4.19 | Запуск TypeScript без компиляции (dev) | MIT |
 
 **Установка:**
 ```bash
-cd packages/server
-pnpm add -D drizzle-kit drizzle-zod @types/better-sqlite3 @types/ejs tsx
+cd server
+pnpm add -D @types/better-sqlite3 @types/ejs @types/node tsx
 ```
 
-### Frontend (`packages/web`)
+### Database (`packages/db`)
+
+| Пакет | Версия | Назначение | Лицензия |
+|---|---|---|---|
+| `drizzle-kit` | ^0.30 | Генерация SQL-миграций из TS-схемы | MIT |
+
+**Установка:**
+```bash
+cd packages/db
+pnpm add -D drizzle-kit
+```
+
+### Frontend (`ui/`)
 
 | Пакет | Версия | Назначение | Лицензия |
 |---|---|---|---|
@@ -977,11 +995,11 @@ pnpm add -D drizzle-kit drizzle-zod @types/better-sqlite3 @types/ejs tsx
 
 **Установка:**
 ```bash
-cd packages/web
+cd ui
 pnpm add react react-dom react-router @tanstack/react-query hono clsx tailwind-merge lucide-react
 ```
 
-### Frontend devDependencies
+### Frontend devDependencies (`ui/`)
 
 | Пакет | Версия | Назначение | Лицензия |
 |---|---|---|---|
@@ -994,7 +1012,7 @@ pnpm add react react-dom react-router @tanstack/react-query hono clsx tailwind-m
 
 **Установка:**
 ```bash
-cd packages/web
+cd ui
 pnpm add -D vite @vitejs/plugin-react tailwindcss @tailwindcss/vite @types/react @types/react-dom
 ```
 
@@ -1010,18 +1028,17 @@ pnpm add -D vite @vitejs/plugin-react tailwindcss @tailwindcss/vite @types/react
 |---|---|---|---|
 | `typescript` | ^5.7 | Компилятор TypeScript | Apache-2.0 |
 | `vitest` | ^3.1 | Тестирование (unit + integration) | MIT |
-| `@vitest/coverage-v8` | ^3.1 | Покрытие кода | MIT |
-| `eslint` | ^9.23 | Линтинг | MIT |
-| `typescript-eslint` | ^8.29 | ESLint-правила для TypeScript | MIT |
+| `eslint` | ^9.24 | Линтинг | MIT |
+| `typescript-eslint` | ^8.30 | ESLint-правила для TypeScript | MIT |
 | `eslint-plugin-react` | ^7.37 | ESLint-правила для React | MIT |
 | `prettier` | ^3.5 | Форматирование кода | MIT |
 | `husky` | ^9.1 | Git hooks | MIT |
-| `lint-staged` | ^15.4 | Lint только изменённых файлов | MIT |
+| `lint-staged` | ^15.5 | Lint только изменённых файлов | MIT |
 
 **Установка:**
 ```bash
 # В корне монорепо
-pnpm add -D typescript vitest @vitest/coverage-v8 eslint typescript-eslint eslint-plugin-react prettier husky lint-staged
+pnpm add -D typescript vitest eslint typescript-eslint eslint-plugin-react prettier husky lint-staged
 ```
 
 ---
@@ -1105,16 +1122,14 @@ pnpm add -D typescript vitest @vitest/coverage-v8 eslint typescript-eslint eslin
 | Node.js | better-sqlite3 | 22 LTS | 11.8 | ✅ OK (N-API) |
 | Hono | @hono/zod-validator | 4.7 | 0.5 | ✅ OK |
 | Drizzle ORM | better-sqlite3 | 0.39 | 11.8 | ✅ OK |
-| Drizzle ORM | drizzle-zod | 0.39 | 0.7 | ✅ OK |
 | Drizzle ORM | drizzle-kit | 0.39 | 0.30 | ✅ OK |
 | Zod | @hono/zod-validator | 3.24 | 0.5 | ✅ OK |
-| Zod | drizzle-zod | 3.24 | 0.7 | ✅ OK |
 | React | react-dom | 19.1 | 19.1 | ✅ OK |
 | React | react-router | 19.1 | 7.5 | ✅ OK |
 | React | @tanstack/react-query | 19.1 | 5.68 | ✅ OK |
 | Vite | @vitejs/plugin-react | 6.2 | 4.4 | ✅ OK |
 | Vite | Tailwind CSS (@tailwindcss/vite) | 6.2 | 4.1 | ✅ OK |
-| TypeScript | ESLint (typescript-eslint) | 5.7 | 8.29 | ✅ OK |
+| TypeScript | ESLint (typescript-eslint) | 5.7 | 8.30 | ✅ OK |
 | Vitest | Vite | 3.1 | 6.2 | ✅ OK |
 
 ---

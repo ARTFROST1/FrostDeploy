@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# SQLite database
+*.db
+*.db-wal
+*.db-shm
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# pnpm
+.pnpm-debug.log
+
+# Vitest
+coverage/
+
+# Drizzle
+drizzle/meta/

@@ -1,0 +1,10 @@
+dist/
+node_modules/
+*.md
+pnpm-lock.yaml
+_research/
+doc/
+coverage/
+*.db
+*.db-wal
+*.db-shm

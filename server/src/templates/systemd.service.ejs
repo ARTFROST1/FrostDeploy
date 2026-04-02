@@ -1,0 +1,28 @@
+[Unit]
+Description=FrostDeploy: <%= name %>
+After=network.target
+
+[Service]
+Type=simple
+User=frostdeploy
+WorkingDirectory=<%= runtimeDir %>
+ExecStart=<%= startCmd %>
+Restart=on-failure
+RestartSec=5
+Environment=PORT=<%= port %>
+Environment=NODE_ENV=production
+<% if (envFilePath) { %>
+EnvironmentFile=<%= envFilePath %>
+<% } %>
+<% if (cpuQuota) { %>
+CPUQuota=<%= cpuQuota %>
+<% } %>
+<% if (memoryMax) { %>
+MemoryMax=<%= memoryMax %>
+<% } %>
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=frostdeploy-<%= name %>
+
+[Install]
+WantedBy=multi-user.target
