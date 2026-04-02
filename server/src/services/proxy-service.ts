@@ -13,6 +13,17 @@ import {
 } from '../lib/caddy.js';
 
 const IS_MAC = process.platform === 'darwin';
+
+/** Wrapper around fetch that sets Origin header required by Caddy admin API. */
+function caddyFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      Origin: CADDY_ADMIN_URL,
+    },
+  });
+}
 const BACKUP_DIR = '/var/lib/frostdeploy/caddy-backup';
 
 const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i;
@@ -56,7 +67,7 @@ export async function addRoute(
   }
 
   try {
-    const res = await fetch(`${CADDY_ADMIN_URL}/config/apps/http/servers/srv0/routes`, {
+    const res = await caddyFetch(`${CADDY_ADMIN_URL}/config/apps/http/servers/srv0/routes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(route),
@@ -70,7 +81,7 @@ export async function addRoute(
     // Apply access log config
     const logConfig = await generateLogConfig(domain);
     const sanitized = domain.replace(/\./g, '-');
-    await fetch(`${CADDY_ADMIN_URL}/config/logging/logs/access-${sanitized}`, {
+    await caddyFetch(`${CADDY_ADMIN_URL}/config/logging/logs/access-${sanitized}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(logConfig),
@@ -96,7 +107,7 @@ export async function removeRoute(domain: string): Promise<{ success: boolean; e
   }
 
   try {
-    const res = await fetch(`${CADDY_ADMIN_URL}/id/route-${domain}`, {
+    const res = await caddyFetch(`${CADDY_ADMIN_URL}/id/route-${domain}`, {
       method: 'DELETE',
     });
 
@@ -125,7 +136,7 @@ export async function getRoutes(): Promise<CaddyRoute[]> {
   }
 
   try {
-    const res = await fetch(`${CADDY_ADMIN_URL}/config/apps/http/servers/srv0/routes`);
+    const res = await caddyFetch(`${CADDY_ADMIN_URL}/config/apps/http/servers/srv0/routes`);
     if (!res.ok) return [];
     return (await res.json()) as CaddyRoute[];
   } catch {
