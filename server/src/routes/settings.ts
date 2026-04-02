@@ -58,12 +58,12 @@ app.post('/setup', zValidator('json', setupSchema), async (c) => {
 
   // 6. Auto-login
   const token = signSession({ role: 'admin' }, sessionSecret);
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isSecure = c.req.header('x-forwarded-proto') === 'https';
 
   setCookie(c, 'fd_session', token, {
     httpOnly: true,
     sameSite: 'Lax',
-    secure: isProduction,
+    secure: isSecure,
     path: '/',
     maxAge: 86400,
   });
