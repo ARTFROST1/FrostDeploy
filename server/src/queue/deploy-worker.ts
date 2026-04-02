@@ -186,6 +186,9 @@ export async function executePipeline(
               runtimeDir: project.runtimeDir,
               startCmd: 'npm start',
               port: project.port,
+              envFilePath: undefined,
+              cpuQuota: undefined,
+              memoryMax: undefined,
             });
             await startService(project.name);
           } else {
