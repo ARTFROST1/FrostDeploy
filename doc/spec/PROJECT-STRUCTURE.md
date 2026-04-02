@@ -1,8 +1,8 @@
 ---
 title: "Project Structure — FrostDeploy"
 summary: "Полная структура проекта FrostDeploy: каталоги, файлы, граф зависимостей, конфигурации, соглашения по именованию"
-status: Draft
-date: 2026-04-01
+status: Completed
+date: 2026-04-02
 author: "@artfrost"
 sources:
   - PRD.md
@@ -64,17 +64,28 @@ sources:
 frostdeploy/
 ├── packages/                       # Переиспользуемые внутренние пакеты
 │   ├── shared/                     # Типы, константы, валидаторы (лист DAG)
-│   └── db/                         # Drizzle-схема, миграции, клиент SQLite
+│   └── db/                         # Drizzle-схема, клиент SQLite
 ├── server/                         # Hono API-сервер (backend)
 ├── ui/                             # React SPA (frontend)
 ├── doc/                            # Внутренняя документация проекта
 │   ├── PRD.md                      # Product Requirements Document
-│   ├── TECH-STACK.md               # Технологический стек
-│   ├── DATABASE.md                 # Схема базы данных
-│   ├── UI-UX.md                    # UI/UX спецификация
-│   ├── PROJECT-STRUCTURE.md        # Этот документ
+│   ├── FULL-GUIDE.md               # Полное руководство по платформе
+│   ├── PRODUCTION-TEST-PROGRESS.md # Прогресс тестирования в продакшене
 │   ├── docs.json                   # Реестр документации (навигация)
-│   └── implementation/             # Планы реализации по фазам
+│   ├── spec/                       # Спецификации
+│   │   ├── TECH-STACK.md           # Технологический стек
+│   │   ├── DATABASE.md             # Схема базы данных
+│   │   ├── UI-UX.md                # UI/UX спецификация
+│   │   └── PROJECT-STRUCTURE.md    # Этот документ
+│   ├── implementation/             # Планы реализации по фазам
+│   │   ├── IMPLEMENTATION.md       # Подробный план реализации
+│   │   └── README.md               # Обзор плана
+│   └── analysis/                   # Аналитические материалы
+│       ├── COMPETITORS-CODE-ANALYSIS.md  # Анализ кода конкурентов
+│       └── DEPLOY-PLATFORM-RESEARCH.md   # Исследование deploy-платформ
+├── _research/                      # Исходный код конкурентов для анализа
+│   ├── caprover/                   # Форк CapRover (справочный материал)
+│   └── coolify/                    # Форк Coolify (справочный материал)
 ├── scripts/                        # Скрипты автоматизации
 │   ├── install.sh                  # Идемпотентный скрипт установки на VDS (Ubuntu/Debian)
 │   └── frostdeploy.service         # systemd unit для платформы (sandboxing, journal)
@@ -82,14 +93,14 @@ frostdeploy/
 ├── package.json                    # Корневой манифест: scripts, devDependencies
 ├── tsconfig.base.json              # Базовый TypeScript-конфиг (наследуется всеми пакетами)
 ├── eslint.config.mjs               # ESLint 9 flat config (единый для всего монорепо)
-├── .prettierrc                     # Конфигурация Prettier
 ├── vitest.workspace.ts             # Vitest workspace config (запуск тестов всех пакетов)
-├── .env.example                    # Пример переменных окружения для разработки
+├── pnpm-lock.yaml                  # Lockfile зависимостей
 ├── .gitignore                      # Игнорируемые файлы Git
-├── AGENTS.md                       # Руководство для AI-агентов и контрибьюторов
 ├── LICENSE                         # Лицензия MIT
 └── README.md                       # Описание проекта, quickstart
 ```
+
+> **Примечание:** Файлы `.env.example`, `.prettierrc`, `AGENTS.md` были запланированы, но не созданы.
 
 **Пояснения:**
 
@@ -98,9 +109,12 @@ frostdeploy/
 | `packages/` | Внутренние библиотеки — чистые, переиспользуемые пакеты без side effects |
 | `server/` | Самостоятельный backend-пакет; в продакшене раздаёт собранный `ui/dist` |
 | `ui/` | Самостоятельный frontend-пакет; в dev — Vite dev server на отдельном порту |
-| `doc/` | Внутренняя документация (PRD, TechStack, DB, UI/UX, Structure, Implementation) |
-| `scripts/` | Shell/JS скрипты для автоматизации (настройки, генерации, CI) |
-| `AGENTS.md` | Порядок чтения документов, правила для контрибьюторов и AI-агентов |
+| `doc/` | Внутренняя документация (PRD, spec, implementation, analysis) |
+| `doc/spec/` | Спецификации: TechStack, DB, UI/UX, ProjectStructure |
+| `doc/implementation/` | Планы реализации по фазам |
+| `doc/analysis/` | Анализ конкурентов и исследования |
+| `_research/` | Исходный код конкурентов (CapRover, Coolify) для справочного анализа |
+| `scripts/` | Shell-скрипты для автоматизации установки и настройки |
 
 ---
 
@@ -132,16 +146,13 @@ packages/shared/
 │   │   ├── api.ts                      # ApiResponse<T>, ApiError, PaginatedResponse<T>
 │   │   └── index.ts                    # Barrel: re-export всех типов
 │   ├── constants/                      # Неизменяемые значения
-│   │   ├── frameworks.ts              # FRAMEWORKS: Record<Framework, { buildCmd, startCmd, marker }>
-│   │   ├── ports.ts                    # PORT_RANGE_START (4321), PORT_RANGE_END (4399)
-│   │   ├── deploy-steps.ts            # DEPLOY_STEPS: ['fetch','checkout','install','build','sync','restart']
-│   │   └── index.ts                    # Barrel: re-export всех констант
+│   │   └── index.ts                    # FRAMEWORKS, PORT_RANGE_START (4322), PORT_RANGE_END (4400),
+│   │                                   # DEPLOY_TIMEOUT_MS, HEALTH_CHECK_RETRIES,
+│   │                                   # HEALTH_CHECK_INTERVAL_MS, DEPLOY_STEPS
 │   ├── validators/                     # Zod-схемы для валидации данных
-│   │   ├── project.ts                  # createProjectSchema, updateProjectSchema, detectRepoSchema
-│   │   ├── deployment.ts               # triggerDeploySchema, cancelDeploySchema
-│   │   ├── env-variable.ts             # createEnvVarSchema, updateEnvVarsSchema
-│   │   ├── auth.ts                     # loginSchema, setupSchema, changePasswordSchema
-│   │   └── index.ts                    # Barrel: re-export всех валидаторов
+│   │   └── index.ts                    # loginSchema, setupSchema, changePasswordSchema,
+│   │                                   # createProjectSchema, updateProjectSchema,
+│   │                                   # updateEnvVarsSchema, triggerDeploySchema
 │   └── index.ts                        # Главный barrel: export * из types, constants, validators
 ├── package.json                        # name: "@fd/shared", dependencies: { zod }
 ├── tsconfig.json                       # extends ../../tsconfig.base.json
@@ -178,7 +189,7 @@ import { type Project, type Deployment, FRAMEWORKS, createProjectSchema } from '
 
 ### Назначение
 
-Слой данных: Drizzle ORM-схема 6 таблиц, SQL-миграции, фабрика подключения к SQLite, seed-данные. Зависит от `@fd/shared` (типы).
+Слой данных: Drizzle ORM-схема 6 таблиц, фабрика подключения к SQLite. Зависит от `@fd/shared` (типы).
 
 ### Дерево файлов
 
@@ -189,19 +200,14 @@ packages/db/
 │   │   ├── projects.ts                 # Таблица projects: 17 столбцов, CHECK на status
 │   │   ├── deployments.ts              # Таблица deployments: иммутабельная история деплоев
 │   │   ├── env-variables.ts            # Таблица env_variables: зашифрованные значения (AES-256-GCM)
-│   │   ├── domains.ts                  # Таблица domains: FQDN + SSL-статус
+│   │   ├── domains.ts                  # Таблица domains: FQDN + sslStatus, verifiedAt
 │   │   ├── settings.ts                 # Таблица settings: key-value глобальных настроек
 │   │   ├── deploy-locks.ts             # Таблица deploy_locks: per-project мьютекс деплоя
 │   │   ├── relations.ts                # Drizzle relations: projects → deployments, env_variables, domains
 │   │   └── index.ts                    # Barrel: export всех таблиц и relations
-│   ├── migrations/                     # SQL-миграции (автогенерация через drizzle-kit)
-│   │   └── 0000_initial.sql            # Первая миграция: CREATE TABLE × 6, индексы
-│   ├── client.ts                       # createDb(): фабрика подключения SQLite + WAL PRAGMA
-│   ├── seed.ts                         # Seed-данные для dev: 2 проекта, 5 деплоев, env-переменные
+│   ├── client.ts                       # createDb(): фабрика подключения SQLite (better-sqlite3) + WAL PRAGMA
 │   ├── utils.ts                        # randomHex(bytes) — утилита генерации hex-ID
-│   ├── migrate.ts                      # CLI-скрипт запуска миграций (drizzle-orm migrator)
 │   └── index.ts                        # Barrel: export { createDb, schema, relations }
-├── drizzle.config.ts                   # Конфигурация drizzle-kit: dialect, schema path, out dir
 ├── package.json                        # name: "@fd/db", deps: drizzle-orm, better-sqlite3, @fd/shared
 ├── tsconfig.json                       # extends ../../tsconfig.base.json
 └── vitest.config.ts                    # Тесты: in-memory SQLite
@@ -212,11 +218,8 @@ packages/db/
 | Файл | Описание |
 |---|---|
 | `client.ts` | Создаёт подключение `better-sqlite3` → Drizzle ORM. Устанавливает PRAGMA: `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`, `foreign_keys=ON`, `cache_size=-20000`, `temp_store=MEMORY` |
-| `seed.ts` | Генерирует тестовые данные: 2 проекта (Astro SSR, Express API), 5 деплоев, 3 env-переменных. Используется скриптом `pnpm db:seed` |
 | `relations.ts` | Декларативные связи Drizzle: `projects` 1→N `deployments`, `projects` 1→N `env_variables`, `projects` 1→N `domains`, `projects` 1→1 `deploy_locks` |
 | `utils.ts` | `randomHex(bytes)` — генерация hex-строк для ID сущностей |
-| `migrate.ts` | CLI-скрипт запуска миграций через `drizzle-orm/better-sqlite3/migrator` |
-| `migrations/` | Только добавление файлов, никогда не редактирование существующих. Каждая миграция — атомарная |
 
 ### package.json
 
@@ -235,7 +238,6 @@ packages/db/
   },
   "devDependencies": {
     "drizzle-kit": "^0.30",
-    "drizzle-zod": "^0.7",
     "@types/better-sqlite3": "^7.6"
   }
 }
@@ -437,6 +439,7 @@ ui/
 │   │   ├── project-deploys.tsx             # /projects/:id/deploys — таблица истории деплоев (пагинация)
 │   │   ├── deploy-console.tsx              # /projects/:id/deploys/:deployId — SSE-лог в терминальном стиле
 │   │   ├── project-env.tsx                 # /projects/:id/env — CRUD переменных окружения
+│   │   ├── project-domain.tsx              # /projects/:id/domain — управление доменами, DNS-верификация, SSL
 │   │   ├── project-logs.tsx                # /projects/:id/logs — journalctl логи (polling 5 сек)
 │   │   ├── project-settings.tsx            # /projects/:id/settings — конфигурация + Danger Zone
 │   │   ├── platform-settings.tsx           # /settings — PAT, пароль, информация о сервере
@@ -444,30 +447,27 @@ ui/
 │   │
 │   ├── components/                         # Переиспользуемые компоненты
 │   │   ├── ui/                             # shadcn/ui — копируемые примитивы (Radix + Tailwind)
+│   │   │   ├── alert.tsx                   # Предупреждения на уровне страницы
+│   │   │   ├── badge.tsx                   # Метки статусов
 │   │   │   ├── button.tsx                  # Кнопки: primary, secondary, destructive, ghost, outline
 │   │   │   ├── card.tsx                    # Контейнер с тенью и скруглением
-│   │   │   ├── badge.tsx                   # Метки статусов
-│   │   │   ├── table.tsx                   # Таблица: Header, Body, Row, Cell
-│   │   │   ├── tabs.tsx                    # Вкладки (навигация внутри страницы проекта)
 │   │   │   ├── dialog.tsx                  # Модальные окна (подтверждения, формы)
-│   │   │   ├── input.tsx                   # Текстовое поле ввода
-│   │   │   ├── select.tsx                  # Выпадающий список
-│   │   │   ├── toast.tsx                   # Уведомления (success, error, info)
-│   │   │   ├── toaster.tsx                 # Провайдер toast-уведомлений
-│   │   │   ├── tooltip.tsx                 # Подсказки при наведении
-│   │   │   ├── skeleton.tsx                # Загрузочное состояние (placeholder)
-│   │   │   ├── scroll-area.tsx             # Область прокрутки (логи, списки)
-│   │   │   ├── separator.tsx               # Горизонтальная и вертикальная линия-разделитель
-│   │   │   ├── switch.tsx                  # Переключатель (show/hide secret)
 │   │   │   ├── dropdown-menu.tsx           # Контекстное меню
-│   │   │   ├── alert.tsx                   # Предупреждения на уровне страницы
-│   │   │   └── progress.tsx                # Прогресс-бар (индикатор деплоя)
+│   │   │   ├── input.tsx                   # Текстовое поле ввода
+│   │   │   ├── label.tsx                   # Метка для form-элементов
+│   │   │   ├── scroll-area.tsx             # Область прокрутки (логи, списки)
+│   │   │   ├── select.tsx                  # Выпадающий список
+│   │   │   ├── separator.tsx               # Горизонтальная и вертикальная линия-разделитель
+│   │   │   ├── skeleton.tsx                # Загрузочное состояние (placeholder)
+│   │   │   ├── switch.tsx                  # Переключатель (show/hide secret)
+│   │   │   ├── table.tsx                   # Таблица: Header, Body, Row, Cell
+│   │   │   └── tooltip.tsx                 # Подсказки при наведении
 │   │   │
 │   │   ├── status-badge.tsx                # StatusBadge: статус с цветовой кодировкой и пульсацией
 │   │   ├── commit-card.tsx                 # CommitCard: SHA, сообщение, автор, кнопка Deploy
 │   │   ├── metric-card.tsx                 # MetricCard: иконка, значение, прогресс-бар с порогами
 │   │   ├── deploy-log.tsx                  # DeployLog: терминальный эмулятор (чёрный фон, моношрифт, автоскролл)
-│   │   ├── deploy-progress.tsx             # DeployProgress: визуальный прогресс 6 шагов pipeline
+│   │   ├── deploy-progress.tsx             # DeployProgress: визуальный прогресс 8 шагов pipeline
 │   │   ├── project-card.tsx                # ProjectCard: карточка проекта на дашборде (иконка, статус, домен)
 │   │   ├── env-var-editor.tsx              # EnvVarEditor: таблица key-value, маскировка секретов, CRUD
 │   │   ├── confirm-dialog.tsx              # ConfirmDialog: деструктивные действия, опционально requireTyping
@@ -477,8 +477,9 @@ ui/
 │   │   ├── project-layout.tsx              # ProjectLayout: layout страницы проекта с табами
 │   │   └── app-layout.tsx                  # AppLayout: sidebar + main content area + breadcrumbs
 │   │
-│   ├── api/                                # API-клиент (Hono RPC, типизированный)
-│   │   ├── client.ts                       # hc<AppType>('/api') — типобезопасный HTTP-клиент
+│   ├── api/                                # API-клиент (типизированный)
+│   │   ├── client.ts                       # HTTP-клиент с базовым URL и обработкой ошибок
+│   │   ├── index.ts                        # Barrel: re-export всех API-модулей
 │   │   ├── projects.ts                     # fetchProjects(), createProject(), updateProject(), deleteProject()
 │   │   ├── deploys.ts                      # triggerDeploy(), fetchDeployments(), cancelDeploy()
 │   │   ├── system.ts                       # fetchSystemMetrics(), fetchProjectLogs()
@@ -522,6 +523,7 @@ ui/
 | `/projects/:id/deploys` | `project-deploys.tsx` | AppLayout + Tabs |
 | `/projects/:id/deploys/:deployId` | `deploy-console.tsx` | AppLayout |
 | `/projects/:id/env` | `project-env.tsx` | AppLayout + Tabs |
+| `/projects/:id/domain` | `project-domain.tsx` | AppLayout + Tabs |
 | `/projects/:id/logs` | `project-logs.tsx` | AppLayout + Tabs |
 | `/projects/:id/settings` | `project-settings.tsx` | AppLayout + Tabs |
 | `/settings` | `platform-settings.tsx` | AppLayout |
@@ -717,15 +719,7 @@ export default tseslint.config(
 
 ### 8.5. .prettierrc
 
-```json
-{
-  "semi": true,
-  "singleQuote": true,
-  "trailingComma": "all",
-  "printWidth": 100,
-  "tabWidth": 2
-}
-```
+> **Примечание:** Файл `.prettierrc` был запланирован, но не создан. Форматирование осуществляется через ESLint.
 
 ### 8.6. vitest.workspace.ts
 
@@ -775,23 +769,7 @@ export default defineConfig({
 
 ### 8.9. .env.example
 
-```bash
-# Среда
-NODE_ENV=development
-
-# Сервер FrostDeploy
-PORT=9000
-DATABASE_URL=./data/frostdeploy.db
-
-# GitHub
-GITHUB_PAT=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Шифрование (генерируется при setup)
-ENCRYPTION_KEY=
-
-# Сессия (генерируется при setup)
-SESSION_SECRET=
-```
+> **Примечание:** Файл `.env.example` был запланирован, но не создан. Переменные окружения настраиваются через Setup Wizard и хранятся в БД (settings) / файле encryption.key.
 
 ### 8.10. .gitignore
 
@@ -816,13 +794,13 @@ coverage/
 | `tsconfig.base.json` | Корень | Базовый TypeScript-конфиг |
 | `tsconfig.json` | Каждый пакет | Пакет-специфичный TS-конфиг (`extends base`) |
 | `eslint.config.mjs` | Корень | Единый ESLint 9 flat config |
-| `.prettierrc` | Корень | Единый стиль форматирования |
+| ~~`.prettierrc`~~ | Корень | *(Запланирован, не создан)* Единый стиль форматирования |
 | `vitest.workspace.ts` | Корень | Запуск тестов всех пакетов |
 | `vitest.config.ts` | Каждый пакет | Пакет-специфичная конфигурация тестов |
 | `vite.config.ts` | `ui/` | Сборка фронтенда, proxy, плагины |
 | `drizzle.config.ts` | `packages/db/` | Миграции Drizzle: схема, output |
 | `components.json` | `ui/` | Конфигурация shadcn/ui |
-| `.env.example` | Корень | Пример переменных окружения |
+| ~~`.env.example`~~ | Корень | *(Запланирован, не создан)* Пример переменных окружения |
 | `.gitignore` | Корень | Игнорируемые файлы |
 
 ---
@@ -882,8 +860,12 @@ coverage/
 ├── data.db-wal                             # WAL-журнал (при активной записи)
 ├── data.db-shm                             # Shared memory (при WAL)
 ├── encryption.key                          # Мастер-ключ шифрования (600 permissions)
-└── backups/                                # Автобэкапы БД
-    └── data-2026-04-01.db                  # Бэкап SQLite (.backup API)
+├── env/                                    # Расшифрованные env-файлы проектов
+│   └── {name}.env                          # EnvironmentFile для systemd (расшифрованные env vars)
+├── backups/                                # Автобэкапы БД
+│   └── data-2026-04-01.db                  # Бэкап SQLite (.backup API)
+└── caddy-backup/                           # Бэкапы конфигурации Caddy
+    └── Caddyfile.bak                       # Бэкап Caddyfile перед изменениями
 ```
 
 ### Данные управляемых проектов
@@ -899,8 +881,7 @@ coverage/
 /var/www/{project}/                         # Runtime-директория (только production)
 ├── dist/                                   # Синхронизированные артефакты (rsync)
 ├── package.json                            # Для npm ci --omit=dev
-├── node_modules/                           # Только production-зависимости
-└── .env                                    # EnvironmentFile для systemd (расшифрованные env vars)
+└── node_modules/                           # Только production-зависимости
 ```
 
 **Принцип двух директорий:** сборка в `-src/` никогда не влияет на работающий процесс в runtime-директории. Атомарная синхронизация через `rsync -a --delete` происходит только при успешной сборке.
@@ -945,6 +926,9 @@ coverage/
 | `/opt/frostdeploy/` | Код FrostDeploy | Установка (`npx frostdeploy init`) |
 | `/var/lib/frostdeploy/data.db` | SQLite БД | Первый запуск |
 | `/var/lib/frostdeploy/encryption.key` | Мастер-ключ AES-256 | Setup Wizard |
+| `/var/lib/frostdeploy/env/{name}.env` | Расшифрованные env-переменные проекта | Создание/обновление проекта |
+| `/var/lib/frostdeploy/backups/` | Автобэкапы SQLite (.backup API) | Авто (24ч) / ручной |
+| `/var/lib/frostdeploy/caddy-backup/` | Бэкапы конфигурации Caddy | Изменение прокси-конфига |
 | `/var/www/{name}-src/` | Исходники проекта | Создание проекта |
 | `/var/www/{name}/` | Runtime проекта | Создание проекта |
 | `/etc/systemd/system/frostdeploy.service` | Сервис платформы | Установка |
@@ -1008,7 +992,7 @@ coverage/
 |---|---|---|
 | Сервис платформы | `frostdeploy.service` | `frostdeploy.service` |
 | Сервис проекта | `frostdeploy-{name}.service` | `frostdeploy-lavillapine.service` |
-| EnvironmentFile | `/var/www/{name}/.env` | `/var/www/lavillapine/.env` |
+| EnvironmentFile | `/var/lib/frostdeploy/env/{name}.env` | `/var/lib/frostdeploy/env/lavillapine.env` |
 
 ---
 
@@ -1104,11 +1088,12 @@ ui/
 ### Компоненты vs UI-UX
 
 - Все компоненты из UI-UX.md (StatusBadge, CommitCard, MetricCard, DeployLog, ProjectCard, EnvVarEditor, ConfirmDialog, SidebarProjectItem) имеют соответствующие файлы в `ui/src/components/`.
-- Добавлены инфраструктурные компоненты: `app-layout.tsx`, `sidebar.tsx`, `deploy-progress.tsx`, `toaster.tsx`.
+- Добавлены инфраструктурные компоненты: `app-layout.tsx`, `sidebar.tsx`, `deploy-progress.tsx`.
 
 ### Маршруты vs UI-UX
 
-- Все 11 маршрутов из UI-UX.md (login, setup, dashboard, project-new, project-overview, project-deploys, deploy-console, project-env, project-logs, project-settings, settings) имеют соответствующие файлы в `ui/src/pages/`.
+- Все 12 маршрутов из UI-UX.md (login, setup, dashboard, project-new, project-overview, project-deploys, deploy-console, project-env, project-domain, project-logs, project-settings, settings) имеют соответствующие файлы в `ui/src/pages/`.
+- Добавлена страница `project-domain.tsx` для управления доменами, DNS-верификацией и SSL.
 
 ### Таблицы vs DatabaseSchema
 
@@ -1119,10 +1104,30 @@ ui/
 - Dashboard (FR-100—102) → `dashboard.tsx` + `metric-card.tsx` + `project-card.tsx`
 - Project Management (FR-200—207) → `project-service.ts` + `projects.ts` (routes)
 - Deploy Engine (FR-300—307) → `deploy-service.ts` + `deploy-queue.ts` + `deploy-worker.ts`
-- Proxy Manager (FR-400—404) → `proxy-service.ts` + `caddy.ts` *(⚠️ Phase 3 — файлы ещё не созданы)*
+- Proxy Manager (FR-400—404) → `proxy-service.ts` + `caddy.ts` + `caddyfile.ejs`
 - Monitoring (FR-500—502) → `system-service.ts` + `system.ts` (routes)
 - Auth (FR-600—603) → `auth.ts` (routes) + `auth.ts` (middleware) + `crypto.ts`
 - Setup Wizard (FR-700—702) → `setup.tsx` + `settings.ts` (routes)
+- Backups → `backup-service.ts` + `backups.ts` (routes)
+
+### Нереализованные планы
+
+| Файл | Статус | Причина |
+|---|---|---|
+| `.env.example` | Не создан | Настройка через Setup Wizard |
+| `.prettierrc` | Не создан | Форматирование через ESLint |
+| `AGENTS.md` | Не создан | Планируется для v0.2 |
+| `packages/db/src/seed.ts` | Не создан | Dev-данные через тесты |
+| `packages/db/src/migrate.ts` | Не создан | Миграции через drizzle-kit CLI |
+
+### Дополнительные компоненты (vs исходный план)
+
+- `_research/` — директория с исходным кодом CapRover и Coolify для справочного анализа
+- `backup-service.ts` + `backups.ts` — модуль бэкапов SQLite (не был в исходном PRD)
+- `project-domain.tsx` — отдельная страница управления доменами (выделена из project-settings)
+- `confirm-dialog.tsx` — компонент подтверждения деструктивных действий
+- `sanitize.ts` — очистка пользовательского ввода от HTML
+- `caddyfile.ejs` — EJS-шаблон для генерации Caddy-конфига
 
 ---
 
@@ -1130,18 +1135,19 @@ ui/
 
 | Метрика | Значение |
 |---|---|
-| Всего каталогов | 33 |
-| Всего файлов | 131 |
+| Всего каталогов | 36 |
+| Всего файлов | 128 |
 | **Итого (каталоги + файлы)** | **164** |
 
 **Разбивка по пакетам:**
 
 | Пакет | Каталоги | Файлы |
 |---|---|---|
-| Корень проекта | 5 | 12 |
-| `packages/shared` | 4 | 19 |
-| `packages/db` | 3 | 14 |
+| Корень проекта | 5 | 8 |
+| `packages/shared` | 4 | 12 |
+| `packages/db` | 2 | 12 |
 | `server` | 7 | 30 |
-| `ui` | 9 | 56 |
-| `doc/` | 1 | — |
-| `scripts/` | 1 | — |
+| `ui` | 9 | 58 |
+| `doc/` | 4 | 9 |
+| `scripts/` | 1 | 2 |
+| `_research/` | 3 | — |

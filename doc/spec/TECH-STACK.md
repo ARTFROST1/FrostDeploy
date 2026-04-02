@@ -1,8 +1,8 @@
 ---
 title: "TechStack — FrostDeploy"
 summary: "Технологический стек self-hosted универсальной платформы деплоя FrostDeploy: runtime, фреймворки, БД, инфраструктура, DevOps"
-status: Draft
-date: 2026-03-31
+status: Completed
+date: 2026-04-02
 author: "@artfrost"
 sources:
   - PRD.md
@@ -49,10 +49,10 @@ sources:
 │  │  │SPA     │  │        │ │    ┌──────────▼────────────────┐  │
 │  │  └────────┘  └───┬────┘ │    │    Управляемые проекты    │  │
 │  │              ┌────▼────┐ │    │  ┌──────────┐             │  │
-│  │              │ Build   │ │    │  │ App A    │ :4321       │  │
+│  │              │ Build   │ │    │  │ App A    │ :4322       │  │
 │  │              │ Engine  │─┼───►│  │ (systemd)│             │  │
 │  │              │ + Queue │ │    │  ├──────────┤             │  │
-│  │              └────┬────┘ │    │  │ App B    │ :4322       │  │
+│  │              └────┬────┘ │    │  │ App B    │ :4323       │  │
 │  │              ┌────▼────┐ │    │  │ (systemd)│             │  │
 │  │              │ SQLite  │ │    │  └──────────┘             │  │
 │  │              │ (WAL)   │ │    └───────────────────────────┘  │
@@ -60,6 +60,8 @@ sources:
 │  └──────────────────────────┘                                    │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+> **PORT_RANGE:** Порты проектов назначаются из диапазона 4322–4400. Порт 4321 зарезервирован (La Villa Pine). `PORT_RANGE_START=4322`.
 
 ### Ключевые NFR из PRD
 
@@ -643,6 +645,21 @@ v0.4: + Rust, PHP              → Docker НУЖЕН
 
 ## 7. Безопасность
 
+### 7.0. Обзор middleware-стека безопасности
+
+Все security-middleware применяются в Hono как цепочка:
+
+```
+Request → rateLimiter → csrfProtection → secureHeaders → authGuard → handler
+```
+
+| Middleware | Назначение | Реализация |
+|---|---|---|
+| **Rate Limiter** | IP-based rate limiting (5 req/min на `/api/auth/login`) | In-memory Map с TTL |
+| **CSRF Protection** | Проверка `Origin` / `Referer` заголовков для мутаций (POST/PUT/DELETE) | Custom middleware |
+| **Secure Headers** | CSP, COOP (`same-origin`), CORP (`same-origin`), X-Content-Type-Options | Custom middleware |
+| **Auth Guard** | Проверка session cookie для `/api/*` (кроме `/api/auth/login`) | HMAC-SHA256 verify |
+
 ### 7.1. Аутентификация — HMAC-SHA256 cookie sessions
 
 | Параметр | Значение MVP (v0.1) | Значение v0.2+ |
@@ -650,6 +667,7 @@ v0.4: + Rust, PHP              → Docker НУЖЕН
 | **Модель** | Single-user (один пароль) | + API tokens |
 | **Хранение пароля** | SHA-256 хеш в `settings` | SHA-256 хеш |
 | **Сессия** | HMAC-SHA256 подписанная cookie | + Bearer API tokens |
+| **Cookie-флаги** | `httpOnly`, `SameSite=Lax`, `Secure` (при HTTPS), `Path=/api` | То же |
 | **TTL** | 24 часа | Настраиваемый |
 | **Rate-limit** | 5 попыток/мин/IP | + TOTP 2FA (v0.4) |
 
@@ -705,6 +723,10 @@ npm ci --ignore-scripts
 # Ограничение сети во время сборки (v0.3)
 # iptables -A OUTPUT -m owner --uid-owner frostdeploy -j DROP  (кроме npm registry)
 ```
+
+### 7.4. Caddy Admin API — защита Origin
+
+Все запросы к Caddy Admin API (`http://localhost:2019`) выполняются через обёртку `caddyFetch()`, которая добавляет заголовок `Origin: http://localhost:2019`. Caddy v2.9+ по умолчанию ограничивает Admin API запросами с localhost Origin — это предотвращает SSRF-атаки. Обёртка также включает `Content-Type: application/json` и error-handling.
 
 ---
 
@@ -992,11 +1014,12 @@ pnpm add -D drizzle-kit
 | `clsx` | ^2.1 | Утилита для className (shadcn/ui) | MIT |
 | `tailwind-merge` | ^3.0 | Merge Tailwind-классов без конфликтов | MIT |
 | `lucide-react` | ^0.475 | Иконки (SVG, tree-shakeable) | ISC |
+| `sonner` | ^2.0 | Toast-уведомления | MIT |
 
 **Установка:**
 ```bash
 cd ui
-pnpm add react react-dom react-router @tanstack/react-query hono clsx tailwind-merge lucide-react
+pnpm add react react-dom react-router @tanstack/react-query hono clsx tailwind-merge lucide-react sonner
 ```
 
 ### Frontend devDependencies (`ui/`)
