@@ -5,20 +5,25 @@ import {
   createCipheriv,
   createDecipheriv,
   timingSafeEqual,
+  scryptSync,
 } from 'node:crypto';
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function hashPassword(plain: string): string {
-  return createHash('sha256').update(plain).digest('hex');
+  const salt = randomBytes(16);
+  const hash = scryptSync(plain, salt, 64, { N: 16384, r: 8, p: 1 });
+  return `${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
-export function verifyPassword(plain: string, hash: string): boolean {
-  const hashed = hashPassword(plain);
-  const a = Buffer.from(hashed, 'hex');
-  const b = Buffer.from(hash, 'hex');
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+export function verifyPassword(plain: string, stored: string): boolean {
+  const [saltHex, hashHex] = stored.split(':');
+  if (!saltHex || !hashHex) return false;
+  const salt = Buffer.from(saltHex, 'hex');
+  const storedHash = Buffer.from(hashHex, 'hex');
+  const derived = scryptSync(plain, salt, 64, { N: 16384, r: 8, p: 1 });
+  if (derived.length !== storedHash.length) return false;
+  return timingSafeEqual(derived, storedHash);
 }
 
 export function signSession(payload: object, secret: string): string {
