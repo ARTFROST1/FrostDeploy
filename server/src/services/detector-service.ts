@@ -13,7 +13,12 @@ interface DetectResult {
   outputDir: string;
 }
 
-export function detectFramework(repoUrl: string, branch?: string, pat?: string): DetectResult {
+export function detectFramework(
+  repoUrl: string,
+  branch?: string,
+  pat?: string,
+  rootDir?: string | null,
+): DetectResult {
   const hex = randomBytes(4).toString('hex');
   const tmpDir = mkdtempSync(join(tmpdir(), `fd-detect-${hex}-`));
 
@@ -39,8 +44,11 @@ export function detectFramework(repoUrl: string, branch?: string, pat?: string):
       stdio: 'pipe',
     });
 
+    // Effective directory: apply rootDir offset for monorepo support
+    const effectiveDir = rootDir ? join(tmpDir, rootDir) : tmpDir;
+
     // Read package.json
-    const pkgPath = join(tmpDir, 'package.json');
+    const pkgPath = join(effectiveDir, 'package.json');
     let deps: Record<string, string> = {};
     let devDeps: Record<string, string> = {};
     let scripts: Record<string, string> = {};
@@ -73,7 +81,7 @@ export function detectFramework(repoUrl: string, branch?: string, pat?: string):
       if (config.marker && allDeps[config.marker]) {
         // For Astro, distinguish SSR vs Static by checking config
         if (fw === 'astro-ssr' || fw === 'astro-static') {
-          const resolved = resolveAstro(tmpDir);
+          const resolved = resolveAstro(effectiveDir);
           return buildResult(resolved);
         }
         return buildResult(fw);
@@ -84,9 +92,9 @@ export function detectFramework(repoUrl: string, branch?: string, pat?: string):
     for (const fw of frameworkOrder) {
       const config = FRAMEWORKS[fw];
       for (const cfgFile of config.configFiles) {
-        if (existsSync(join(tmpDir, cfgFile))) {
+        if (existsSync(join(effectiveDir, cfgFile))) {
           if (fw === 'astro-ssr' || fw === 'astro-static') {
-            const resolved = resolveAstro(tmpDir);
+            const resolved = resolveAstro(effectiveDir);
             return buildResult(resolved);
           }
           return buildResult(fw);

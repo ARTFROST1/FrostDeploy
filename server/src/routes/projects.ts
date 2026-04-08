@@ -62,15 +62,16 @@ app.post(
     z.object({
       repo_url: z.string().url(),
       branch: z.string().optional(),
+      root_dir: z.string().optional(),
     }),
   ),
   (c) => {
     const db = c.get('db');
-    const { repo_url, branch } = c.req.valid('json');
+    const { repo_url, branch, root_dir } = c.req.valid('json');
 
     const pat = getGithubPat(db);
 
-    const result = detectFramework(repo_url, branch, pat);
+    const result = detectFramework(repo_url, branch, pat, root_dir);
     return c.json({ success: true, data: result });
   },
 );

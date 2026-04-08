@@ -14,6 +14,7 @@ interface Project {
   port: number;
   buildCmd: string | null;
   outputDir: string | null;
+  rootDir: string | null;
   srcDir: string;
   runtimeDir: string;
   currentSha: string | null;

@@ -757,7 +757,33 @@ curl -X POST http://localhost:9000/api/projects/abc/rollback/a1b2c3d -b cookies.
 
 ---
 
-## 5. Фаза 3 — Proxy Manager (Caddy) ✅
+### 2.10 — Root Directory support (монорепо) ✅
+
+**Файлы:**
+- `packages/db/src/migrations/0001_previous_omega_flight.sql` (создать — миграция)
+- `packages/shared/src/types/project.ts` (изменить — добавить `rootDir: string | null`)
+- `packages/shared/src/validators/index.ts` (изменить — `rootDir` в `createProjectSchema` и `updateProjectSchema`)
+- `server/src/queue/deploy-worker.ts` (изменить — вычислять `buildDir`)
+- `server/src/queue/deploy-queue.ts` (изменить — локальный интерфейс Project)
+- `server/src/services/detector-service.ts` (изменить — принимать `rootDir`)
+- `server/src/services/project-service.ts` (изменить — сохранять `rootDir`)
+- `server/src/routes/projects.ts` (изменить — `POST /detect` принимает `root_dir`)
+- `ui/src/api/projects.ts` (изменить — поле `rootDir` в input-типах)
+- `ui/src/pages/new-project.tsx` (изменить — поле rootDir в wizard)
+- `ui/src/pages/project-settings.tsx` (изменить — поле rootDir в настройках)
+
+**Описание:**
+Поддержка «Root Directory» — пользователь может указать поддиректорию репозитория как корень сборки (аналог Vercel «Root Directory» / Coolify «Base Directory»). Поле `root_dir TEXT` добавлено в таблицу `projects` (`NULL` = корень репозитория). В deploy pipeline: `buildDir = path.join(srcDir, rootDir)` при наличии rootDir, иначе `buildDir = srcDir`. Git-операции (clone, fetch, checkout) продолжают работать в `srcDir`, только `installDeps`, `runBuild`, `syncFiles` используют `buildDir`. Детектор фреймворков принимает опциональный `rootDir` — ищет `package.json` в `effectiveDir = join(tmpDir, rootDir)`. Валидация блокирует `..`-traversal и абсолютные пути.
+
+**Acceptance Criteria:**
+- Поле `root_dir` присутствует в таблице `projects` после миграции
+- Проект с `rootDir = "apps/frontend"` сбирается из `{srcDir}/apps/frontend/`
+- Запрос с `rootDir = "../escape"` → 400 от Zod-валидатора
+- Запрос с `rootDir = "/etc/passwd"` → 400 от Zod-валидатора
+- `POST /api/detect` принимает `root_dir` — детектор ищет package.json в поддиректории
+- Поле rootDir отображается в New Project wizard и в Project Settings
+
+**Зависимости:** 2.5
 
 > **Цель:** Автоматическое управление Caddy: добавление/удаление маршрутов, DNS-верификация, авто-SSL.
 > **Результат:** При добавлении домена к проекту Caddy автоматически проксирует трафик и получает SSL-сертификат.
@@ -1645,6 +1671,7 @@ Phase 0 → Phase 1 → Phase 2 → Phase 7 → Phase 8
 - [x] Framework detection (11 фреймворков)
 - [x] Deploy полный pipeline: git → build → rsync → restart → health check
 - [x] SSE-стриминг логов деплоя
+- [x] Root Directory support: поддиректория репозитория как корень сборки (`rootDir`, монорепо)
 - [x] Deploy history
 - [x] Rollback к предыдущему коммиту
 - [x] Env-переменные (CRUD, шифрование, маскировка)

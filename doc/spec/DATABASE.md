@@ -110,6 +110,7 @@ PRAGMA wal_autocheckpoint = 1000;   -- Checkpoint каждые 1000 страни
                                 │    build_cmd        TEXT       │
                                 │    start_cmd        TEXT       │
                                 │    output_dir       TEXT       │
+                                │    root_dir         TEXT       │
                                 │    src_dir          TEXT       │
                                 │    runtime_dir      TEXT       │
                                 │    service_name     TEXT       │
@@ -178,6 +179,7 @@ CREATE TABLE projects (
     build_cmd     TEXT,
     start_cmd     TEXT,
     output_dir    TEXT DEFAULT 'dist',
+    root_dir      TEXT,
     src_dir       TEXT NOT NULL,
     runtime_dir   TEXT NOT NULL,
     service_name  TEXT NOT NULL UNIQUE,
@@ -206,6 +208,7 @@ export const projects = sqliteTable('projects', {
   buildCmd:    text('build_cmd'),
   startCmd:    text('start_cmd'),
   outputDir:   text('output_dir').default('dist'),
+  rootDir:     text('root_dir'),
   srcDir:      text('src_dir').notNull(),
   runtimeDir:  text('runtime_dir').notNull(),
   serviceName: text('service_name').notNull().unique(),
@@ -232,6 +235,7 @@ export const projects = sqliteTable('projects', {
 | `build_cmd` | TEXT | Да | `NULL` | Команда сборки, напр. `npm run build` |
 | `start_cmd` | TEXT | Да | `NULL` | Команда запуска, напр. `node dist/server/entry.mjs` |
 | `output_dir` | TEXT | Да | `'dist'` | Директория с артефактами сборки. Default `'dist'` задаётся на уровне Drizzle (`.default('dist')`) и DDL (`DEFAULT 'dist'`) |
+| `root_dir` | TEXT | Да | `NULL` | Поддиректория в репозитории, используемая как корень сборки (поддержка монорепо). `NULL` = корень репозитория. Валидация блокирует `..`-traversal и абсолютные пути |
 | `src_dir` | TEXT | Нет | — | Путь к исходникам: `/var/www/{name}-src` |
 | `runtime_dir` | TEXT | Нет | — | Путь к рантайму: `/var/www/{name}` |
 | `service_name` | TEXT | Нет | — | Имя systemd-юнита, уникальное |
@@ -241,6 +245,7 @@ export const projects = sqliteTable('projects', {
 | `updated_at` | TEXT | Нет | `datetime('now')` | Время обновления (ISO 8601 UTC) |
 
 **Бизнес-правила:**
+- `root_dir` при указании должен быть относительным путём без `..` и без ведущего `/`. Например: `apps/frontend`, `packages/web`. Валидация — на уровне Zod (`createProjectSchema` / `updateProjectSchema`). Значение `NULL` = использовать корень репозитория.
 - `port` должен быть в диапазоне 4322–4400 (CHECK не добавлен — валидация на уровне приложения, диапазон может быть изменён в settings)
 - `service_name` генерируется как `frostdeploy-{name}` и должен быть уникальным
 - При удалении проекта каскадно удаляются: deployments, env_variables, domains, deploy_locks
@@ -606,7 +611,8 @@ src/db/
 ├── index.ts               — Инициализация подключения + PRAGMA
 ├── seed.ts                — Начальные данные (settings)
 └── migrations/
-    ├── 0000_initial.sql   — Создание всех таблиц MVP
+    ├── 0000_initial.sql                    — Создание всех таблиц MVP
+    ├── 0001_previous_omega_flight.sql      — Добавление root_dir в projects (monorepo support)
     ├── 0001_add_domains.sql
     └── meta/
         └── _journal.json  — Журнал применённых миграций

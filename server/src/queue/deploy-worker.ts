@@ -27,6 +27,7 @@ interface Project {
   port: number;
   buildCmd: string | null;
   outputDir: string | null;
+  rootDir: string | null;
   srcDir: string;
   runtimeDir: string;
   currentSha: string | null;
@@ -146,6 +147,13 @@ export async function executePipeline(
       timestamp: now(),
     });
 
+    // Compute effective build directory (rootDir support)
+    const buildDir = project.rootDir ? path.join(project.srcDir, project.rootDir) : project.srcDir;
+    // Security: prevent path traversal
+    if (!buildDir.startsWith(project.srcDir)) {
+      throw new Error('Invalid rootDir: path traversal detected');
+    }
+
     // Run pipeline steps, racing against global timeout
     await Promise.race([
       (async () => {
@@ -165,17 +173,17 @@ export async function executePipeline(
 
         // 6. Install dependencies
         await runStep('install', 'Install dependencies', onEvent, async () => {
-          await installDeps(project.srcDir, onLog);
+          await installDeps(buildDir, onLog);
         });
 
         // 7. Build project
         await runStep('build', 'Build project', onEvent, async () => {
-          await runBuild(project.srcDir, project.buildCmd || 'npm run build', onLog);
+          await runBuild(buildDir, project.buildCmd || 'npm run build', onLog);
         });
 
         // 7. Sync
         await runStep('sync', 'Syncing files', onEvent, async () => {
-          await syncFiles(project.srcDir, project.runtimeDir, project.outputDir || 'dist', onLog);
+          await syncFiles(buildDir, project.runtimeDir, project.outputDir || 'dist', onLog);
         });
 
         // 7.5 Pre-restart port check

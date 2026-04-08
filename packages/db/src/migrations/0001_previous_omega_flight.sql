@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `root_dir` text;

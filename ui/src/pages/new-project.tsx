@@ -42,6 +42,7 @@ interface FormData {
   startCmd: string;
   port: number;
   framework: string | null;
+  rootDir: string;
   envVars: EnvVar[];
 }
 
@@ -53,6 +54,7 @@ const INITIAL_FORM: FormData = {
   startCmd: '',
   port: 3000,
   framework: null,
+  rootDir: '',
   envVars: [],
 };
 
@@ -266,6 +268,20 @@ function StepConfig({
           <p className="text-xs text-muted-foreground">Назначается автоматически</p>
         </div>
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="rootDir">Root Directory</Label>
+        <Input
+          id="rootDir"
+          value={form.rootDir}
+          onChange={(e) => setForm((p) => ({ ...p, rootDir: e.target.value }))}
+          placeholder="Leave empty to use repository root"
+        />
+        <p className="text-xs text-muted-foreground">
+          Set if your app is in a subdirectory (e.g.{' '}
+          <code className="text-foreground">apps/frontend</code>). Useful for monorepos.
+        </p>
+      </div>
     </div>
   );
 }
@@ -323,6 +339,14 @@ function StepReview({ form }: { form: FormData }) {
         )}
         <Row label="Команда сборки" value={form.buildCmd || '—'} mono />
         <Row label="Команда запуска" value={form.startCmd || '—'} mono />
+        {form.rootDir && (
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Root Directory</span>
+            <span className="font-mono text-xs bg-secondary px-1.5 py-0.5 rounded">
+              {form.rootDir}
+            </span>
+          </div>
+        )}
         <Row label="Порт" value={String(form.port)} />
         <div className="flex justify-between items-start">
           <span className="text-muted-foreground">Переменные окружения</span>
@@ -411,6 +435,7 @@ export default function NewProjectPage() {
         branch: form.branch,
         name: form.name,
         envVars: form.envVars.length > 0 ? form.envVars : undefined,
+        ...(form.rootDir ? { rootDir: form.rootDir } : {}),
       }),
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });

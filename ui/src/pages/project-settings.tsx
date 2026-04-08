@@ -40,6 +40,7 @@ export default function ProjectSettingsPage() {
   const [buildCmd, setBuildCmd] = useState('');
   const [startCmd, setStartCmd] = useState('');
   const [outputDir, setOutputDir] = useState('');
+  const [rootDir, setRootDir] = useState('');
 
   useEffect(() => {
     if (!project) return;
@@ -47,6 +48,7 @@ export default function ProjectSettingsPage() {
     setBuildCmd(project.buildCmd ?? '');
     setStartCmd(project.startCmd ?? '');
     setOutputDir(project.outputDir ?? '');
+    setRootDir(project.rootDir ?? '');
   }, [project]);
 
   const updateMutation = useMutation({
@@ -77,6 +79,7 @@ export default function ProjectSettingsPage() {
       buildCmd,
       startCmd,
       outputDir,
+      rootDir: rootDir || null,
     });
   };
 
@@ -147,6 +150,20 @@ export default function ProjectSettingsPage() {
               onChange={(e) => setOutputDir(e.target.value)}
               placeholder="dist"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rootDir">Root Directory</Label>
+            <Input
+              id="rootDir"
+              value={rootDir}
+              onChange={(e) => setRootDir(e.target.value)}
+              placeholder="Leave empty to use repository root"
+            />
+            <p className="text-xs text-muted-foreground">
+              Subdirectory to use as the build root. Useful for monorepos (e.g.{' '}
+              <code className="text-foreground">apps/frontend</code>).
+            </p>
           </div>
 
           {/* Read-only fields */}

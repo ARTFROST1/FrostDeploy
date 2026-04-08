@@ -108,6 +108,7 @@ export function createProject(db: DbClient, data: CreateProjectInput) {
       branch: data.branch ?? 'main',
       domain: data.domain ?? null,
       port,
+      rootDir: data.rootDir ?? null,
       srcDir,
       runtimeDir,
       serviceName,

@@ -1,5 +1,18 @@
 import { api } from './client';
-import type { Project, CreateProjectInput, UpdateProjectInput, EnvVariable } from '@fd/shared';
+import type {
+  Project,
+  CreateProjectInput as BaseCreateProjectInput,
+  UpdateProjectInput as BaseUpdateProjectInput,
+  EnvVariable,
+} from '@fd/shared';
+
+export interface CreateProjectInput extends BaseCreateProjectInput {
+  rootDir?: string;
+}
+
+export interface UpdateProjectInput extends BaseUpdateProjectInput {
+  rootDir?: string | null;
+}
 
 export function fetchProjects() {
   return api.get<Project[]>('/api/projects');

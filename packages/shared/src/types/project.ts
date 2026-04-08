@@ -24,6 +24,7 @@ export interface Project {
   buildCmd: string | null;
   startCmd: string | null;
   outputDir: string | null;
+  rootDir: string | null;
   srcDir: string;
   runtimeDir: string;
   serviceName: string;

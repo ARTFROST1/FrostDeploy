@@ -12,6 +12,14 @@ export const createProjectSchema = z.object({
     .max(64, 'Project name must be 64 characters or less')
     .regex(/^[a-z0-9][a-z0-9-]*$/, 'Name must be lowercase alphanumeric with hyphens'),
   domain: z.string().optional(),
+  rootDir: z
+    .string()
+    .max(255)
+    .regex(
+      /^(?!.*\.\.)(?!\/)[a-zA-Z0-9][a-zA-Z0-9/_. -]*$/,
+      'Invalid path: no ".." or leading "/" allowed',
+    )
+    .optional(),
   envVars: z
     .array(
       z.object({
@@ -29,6 +37,15 @@ export const updateProjectSchema = z.object({
   startCmd: z.string().optional(),
   domain: z.string().nullable().optional(),
   outputDir: z.string().optional(),
+  rootDir: z
+    .string()
+    .max(255)
+    .regex(
+      /^(?!.*\.\.)(?!\/)[a-zA-Z0-9][a-zA-Z0-9\/_. -]*$/,
+      'Invalid path: no ".." or leading "/" allowed',
+    )
+    .optional()
+    .nullable(),
 });
 
 export const detectRepoSchema = z.object({

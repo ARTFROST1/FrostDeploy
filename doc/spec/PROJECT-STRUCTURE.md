@@ -137,7 +137,7 @@ frostdeploy/
 packages/shared/
 ├── src/
 │   ├── types/                          # TypeScript-типы всех сущностей
-│   │   ├── project.ts                  # Project, ProjectStatus, Framework
+│   │   ├── project.ts                  # Project (incl. rootDir: string | null), ProjectStatus, Framework
 │   │   ├── deployment.ts               # Deployment, DeployStatus, DeployStep, TriggeredBy
 │   │   ├── env-variable.ts             # EnvVariable (без encrypted_value — только key, isSecret)
 │   │   ├── domain.ts                   # Domain, SslStatus
@@ -151,7 +151,7 @@ packages/shared/
 │   │                                   # HEALTH_CHECK_INTERVAL_MS, DEPLOY_STEPS
 │   ├── validators/                     # Zod-схемы для валидации данных
 │   │   └── index.ts                    # loginSchema, setupSchema, changePasswordSchema,
-│   │                                   # createProjectSchema, updateProjectSchema,
+│   │                                   # createProjectSchema, updateProjectSchema (incl. rootDir — blocks ../traversal and absolute paths),
 │   │                                   # updateEnvVarsSchema, triggerDeploySchema
 │   └── index.ts                        # Главный barrel: export * из types, constants, validators
 ├── package.json                        # name: "@fd/shared", dependencies: { zod }
@@ -197,7 +197,7 @@ import { type Project, type Deployment, FRAMEWORKS, createProjectSchema } from '
 packages/db/
 ├── src/
 │   ├── schema/                         # Drizzle-определения таблиц (единая точка правды для БД)
-│   │   ├── projects.ts                 # Таблица projects: 17 столбцов, CHECK на status
+│   │   ├── projects.ts                 # Таблица projects: 18 столбцов, CHECK на status, root_dir (monorepo)
 │   │   ├── deployments.ts              # Таблица deployments: иммутабельная история деплоев
 │   │   ├── env-variables.ts            # Таблица env_variables: зашифрованные значения (AES-256-GCM)
 │   │   ├── domains.ts                  # Таблица domains: FQDN + sslStatus, verifiedAt
@@ -293,6 +293,7 @@ server/
 │   │   ├── git-service.ts                  # cloneRepo, fetchOrigin, checkoutSha, getCommits (GitHub API)
 │   │   │                                   # Авторизация через PAT, кеширование коммитов (60 сек)
 │   │   ├── detector-service.ts             # detectFramework: анализ package.json, конфиг-файлов
+│   │   │                                   # Принимает опциональный rootDir — effectiveDir = join(tmpDir, rootDir)
 │   │   │                                   # Возвращает framework, buildCmd, startCmd, outputDir
 │   │   ├── settings-service.ts             # Settings CRUD, шифрование чувствительных настроек,
 │   │   │                                   # проверка setup_completed
@@ -332,10 +333,11 @@ server/
 │   ├── queue/                              # Очередь деплоев (in-process)
 │   │   ├── deploy-queue.ts                 # DeployQueue: Map<projectId, DeployJob>
 │   │   │                                   # enqueue() — per-project mutex, HTTP 409 при конфликте
-│   │   │                                   # complete() — снятие lock, обновление статуса
+│   │   │                                   # complete() — снятие lock, обновление статуса; локальный интерфейс Project включает rootDir
 │   │   └── deploy-worker.ts                # executeDeployPipeline(): последовательные шаги
 │   │                                       # Каждый шаг → SSE-событие + запись в logs
 │   │                                       # Таймаут: 10 мин на весь pipeline
+│   │                                       # rootDir: buildDir = path.join(srcDir, rootDir); installDeps/runBuild/syncFiles используют buildDir
 │   │
 │   ├── templates/                          # EJS-шаблоны для генерации конфигов
 │   │   ├── systemd.service.ejs             # Шаблон systemd-юнита: User, WorkingDirectory, ExecStart,

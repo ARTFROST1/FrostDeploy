@@ -17,6 +17,7 @@ export const projects = sqliteTable(
     buildCmd: text('build_cmd'),
     startCmd: text('start_cmd'),
     outputDir: text('output_dir').default('dist'),
+    rootDir: text('root_dir'),
     srcDir: text('src_dir').notNull(),
     runtimeDir: text('runtime_dir').notNull(),
     serviceName: text('service_name').notNull().unique(),
