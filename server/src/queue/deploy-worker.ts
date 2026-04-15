@@ -9,6 +9,7 @@ import { cloneRepo, fetchOrigin, checkoutSha } from '../services/git-service.js'
 import { installDeps, runBuild } from '../services/build-service.js';
 import { syncFiles } from '../lib/rsync.js';
 import { createUnit, startService, restartService } from '../lib/systemd.js';
+import { getDecryptedSetting } from '../services/settings-service.js';
 import {
   createDeployment,
   acquireLock,
@@ -157,15 +158,18 @@ export async function executePipeline(
       throw new Error('Invalid rootDir: path traversal detected');
     }
 
+    // Retrieve PAT for git operations
+    const pat = getDecryptedSetting(db, 'github_pat') ?? undefined;
+
     // Run pipeline steps, racing against global timeout
     await Promise.race([
       (async () => {
         // 4. Fetch / Clone
         await runStep('fetch', 'Fetching source', onEvent, async () => {
           if (existsSync(path.join(project.srcDir, '.git'))) {
-            await fetchOrigin(project.srcDir);
+            await fetchOrigin(project.srcDir, pat);
           } else {
-            await cloneRepo(project.repoUrl, undefined, project.srcDir);
+            await cloneRepo(project.repoUrl, pat, project.srcDir);
           }
         });
 

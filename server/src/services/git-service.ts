@@ -105,7 +105,15 @@ export async function cloneRepo(
   });
 }
 
-export async function fetchOrigin(srcDir: string): Promise<void> {
+export async function fetchOrigin(srcDir: string, pat?: string): Promise<void> {
+  if (pat) {
+    // Update remote URL with PAT for private repos
+    const result = await execCommand('git', ['remote', 'get-url', 'origin'], { cwd: srcDir });
+    const currentUrl = result.stdout.trim();
+    const cleanUrl = currentUrl.replace(/^https:\/\/[^@]*@/, 'https://');
+    const authedUrl = cleanUrl.replace('https://', `https://${pat}@`);
+    await execCommand('git', ['remote', 'set-url', 'origin', authedUrl], { cwd: srcDir });
+  }
   await execCommand('git', ['fetch', 'origin'], { cwd: srcDir });
 }
 
