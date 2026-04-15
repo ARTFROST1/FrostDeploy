@@ -4,14 +4,14 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=<%= runUser || 'root' %>
 WorkingDirectory=<%= runtimeDir %>
 ExecStart=/usr/bin/npm start
 Restart=on-failure
 RestartSec=5
 Environment=PORT=<%= port %>
 Environment=NODE_ENV=production
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PATH=<% if (extraPath) { %><%= extraPath %>:<% } %>/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 <% if (envFilePath) { %>
 EnvironmentFile=<%= envFilePath %>
 <% } %>
@@ -20,6 +20,9 @@ CPUQuota=<%= cpuQuota %>
 <% } %>
 <% if (memoryMax) { %>
 MemoryMax=<%= memoryMax %>
+<% } %>
+<% if (limitNofile) { %>
+LimitNOFILE=<%= limitNofile %>
 <% } %>
 StandardOutput=journal
 StandardError=journal

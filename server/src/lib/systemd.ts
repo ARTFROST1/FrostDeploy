@@ -16,6 +16,9 @@ export interface SystemdProject {
   envFilePath?: string;
   cpuQuota?: string;
   memoryMax?: string;
+  extraPath?: string;
+  runUser?: string;
+  limitNofile?: number;
 }
 
 function serviceName(name: string): string {

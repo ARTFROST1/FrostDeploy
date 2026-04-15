@@ -31,6 +31,9 @@ interface Project {
   srcDir: string;
   runtimeDir: string;
   currentSha: string | null;
+  extraPath: string | null;
+  runUser: string | null;
+  limitNofile: number | null;
 }
 
 type OnEvent = (event: SSEEvent) => Promise<void>;
@@ -249,6 +252,9 @@ export async function executePipeline(
             envFilePath: envVarsPath,
             cpuQuota: undefined,
             memoryMax: undefined,
+            extraPath: project.extraPath ?? undefined,
+            runUser: project.runUser ?? undefined,
+            limitNofile: project.limitNofile ?? undefined,
           });
           if (wasRunning) {
             await restartService(project.name);

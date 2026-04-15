@@ -22,6 +22,9 @@ export const projects = sqliteTable(
     runtimeDir: text('runtime_dir').notNull(),
     serviceName: text('service_name').notNull().unique(),
     currentSha: text('current_sha'),
+    extraPath: text('extra_path'),
+    runUser: text('run_user'),
+    limitNofile: integer('limit_nofile'),
     status: text('status', {
       enum: ['created', 'active', 'deploying', 'error', 'stopped'],
     })

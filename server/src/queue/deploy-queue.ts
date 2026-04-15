@@ -18,6 +18,9 @@ interface Project {
   srcDir: string;
   runtimeDir: string;
   currentSha: string | null;
+  extraPath: string | null;
+  runUser: string | null;
+  limitNofile: number | null;
 }
 
 export interface DeployJob {

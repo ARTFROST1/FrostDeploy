@@ -29,6 +29,9 @@ export interface Project {
   runtimeDir: string;
   serviceName: string;
   currentSha: string | null;
+  extraPath: string | null;
+  runUser: string | null;
+  limitNofile: number | null;
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
