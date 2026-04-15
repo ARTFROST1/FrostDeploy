@@ -20,3 +20,16 @@
         format json
     }
 }
+<% if (adminDomain) { %>
+<%= adminDomain %> {
+    reverse_proxy 127.0.0.1:<%= serverPort %>
+    encode gzip zstd
+    log {
+        output file /var/log/caddy/frostdeploy-admin-access.log {
+            roll_size 50mb
+            roll_keep 5
+        }
+        format json
+    }
+}
+<% } %>

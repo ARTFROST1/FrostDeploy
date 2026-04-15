@@ -13,10 +13,17 @@ import {
   AlertCircle,
   Copy,
   ExternalLink,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { fetchSettings, updateSettings, fetchDnsRecords, verifyDns } from '@/api/settings';
+import {
+  fetchSettings,
+  updateSettings,
+  fetchDnsRecords,
+  verifyDns,
+  fetchAdminDomainSuggestion,
+} from '@/api/settings';
 import type { DnsRecordsResponse, DnsVerifyResponse } from '@/api/settings';
 import { fetchSystemMetrics } from '@/api/system';
 import { changePassword } from '@/api/auth';
@@ -26,6 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -140,6 +148,134 @@ function GitHubSection() {
               </Button>
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Admin domain section
+// ---------------------------------------------------------------------------
+
+function AdminDomainSection() {
+  const queryClient = useQueryClient();
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['settings'],
+    queryFn: fetchSettings,
+  });
+
+  const { data: suggestionData } = useQuery({
+    queryKey: ['admin-domain-suggestion'],
+    queryFn: fetchAdminDomainSuggestion,
+    enabled: !!settings?.platform_domain,
+  });
+
+  const currentAdminDomain = settings?.admin_domain || '';
+  const [inputValue, setInputValue] = useState('');
+  const [savedDomain, setSavedDomain] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (admin_domain: string) => updateSettings({ admin_domain }),
+    onSuccess: (_data, admin_domain) => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      toast.success('Домен панели управления сохранён');
+      setSavedDomain(admin_domain);
+    },
+    onError: () => toast.error('Не удалось сохранить домен'),
+  });
+
+  const handleSave = () => {
+    const val = inputValue.trim();
+    if (!val) return;
+    mutation.mutate(val);
+  };
+
+  if (isLoading) return <CardSkeleton />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Lock className="h-5 w-5" />
+          <CardTitle>Домен панели управления</CardTitle>
+        </div>
+        <CardDescription>Откройте доступ к FrostDeploy через HTTPS-субдомен</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!currentAdminDomain && (
+          <Alert variant="warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Нет защиты через домен</AlertTitle>
+            <AlertDescription>
+              Панель управления открыта по прямому порту. Добавьте домен для защиты через HTTPS.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="admin-domain-input">Домен</Label>
+          {suggestionData?.suggestion && (
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-muted-foreground">Предлагаемое значение:</span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs font-mono bg-muted px-2 py-0.5 rounded border hover:bg-muted/80 transition-colors"
+                onClick={() => setInputValue(suggestionData.suggestion!)}
+              >
+                {suggestionData.suggestion}
+                <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  Suggested
+                </span>
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              id="admin-domain-input"
+              type="text"
+              placeholder={suggestionData?.suggestion ?? 'frostdeploy.example.com'}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+            />
+            <Button
+              size="sm"
+              disabled={!inputValue.trim() || mutation.isPending}
+              onClick={handleSave}
+            >
+              {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Сохранить
+            </Button>
+          </div>
+          {currentAdminDomain && (
+            <p className="text-xs text-muted-foreground">
+              Текущий домен: <code className="font-mono">{currentAdminDomain}</code>
+            </p>
+          )}
+        </div>
+
+        {savedDomain && (
+          <Alert variant="warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Закройте прямой доступ к порту</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>
+                Теперь панель управления доступна по адресу{' '}
+                <a
+                  href={`https://${savedDomain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono underline"
+                >
+                  https://{savedDomain}
+                </a>
+                . Закройте прямой доступ к порту командой:
+              </p>
+              <code className="block rounded bg-background/60 px-3 py-2 text-xs font-mono">
+                sudo ufw delete allow 9002/tcp
+              </code>
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>
@@ -579,6 +715,7 @@ export default function PlatformSettingsPage() {
       <Separator />
       <GitHubSection />
       <DomainSection />
+      <AdminDomainSection />
       <PasswordSection />
       <ServerSection />
     </div>

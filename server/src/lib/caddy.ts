@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ejs from 'ejs';
 
@@ -139,8 +139,17 @@ export async function getCaddyStatus(): Promise<string> {
 export async function generateBaseCaddyfile(
   platformDomain: string,
   serverPort: number,
+  adminDomain?: string,
 ): Promise<string> {
   const templatePath = join(import.meta.dirname, '..', 'templates', 'caddyfile.ejs');
   const template = readFileSync(templatePath, 'utf-8');
-  return ejs.render(template, { platformDomain, serverPort });
+  return ejs.render(template, { platformDomain, serverPort, adminDomain: adminDomain || '' });
+}
+
+export function writeCaddyfile(content: string): void {
+  if (IS_MAC) {
+    stub('writeCaddyfile');
+    return;
+  }
+  writeFileSync('/etc/caddy/Caddyfile', content, 'utf-8');
 }

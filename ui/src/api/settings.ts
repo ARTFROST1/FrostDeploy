@@ -47,3 +47,11 @@ export function fetchDnsRecords() {
 export function verifyDns(domain?: string) {
   return api.post<DnsVerifyResponse>('/api/settings/dns-verify', { domain });
 }
+
+export interface AdminDomainSuggestion {
+  suggestion: string | null;
+}
+
+export function fetchAdminDomainSuggestion() {
+  return api.get<AdminDomainSuggestion>('/api/settings/admin-domain-suggestion');
+}

@@ -13,6 +13,7 @@ import {
   getSetting,
 } from '../services/settings-service.js';
 import { verifyDns, getServerIp } from '../services/proxy-service.js';
+import { generateBaseCaddyfile, writeCaddyfile, reloadCaddy } from '../lib/caddy.js';
 
 type Env = {
   Variables: {
@@ -90,6 +91,7 @@ const ALLOWED_SETTINGS_KEYS = [
   'github_pat',
   'port_range_start',
   'port_range_end',
+  'admin_domain',
 ] as const;
 
 const updateSettingsSchema = z.object(
@@ -110,6 +112,16 @@ app.put('/', zValidator('json', updateSettingsSchema), async (c) => {
     } else {
       setSetting(db, key, value);
     }
+  }
+
+  // When admin_domain changes, regenerate and reload Caddyfile
+  if (body.admin_domain !== undefined) {
+    const platformDomain = getSetting(db, 'platform_domain') ?? '';
+    const serverPort = Number(process.env.PORT) || 9000;
+    const adminDomain = body.admin_domain || undefined;
+    const caddyfileContent = await generateBaseCaddyfile(platformDomain, serverPort, adminDomain);
+    writeCaddyfile(caddyfileContent);
+    await reloadCaddy();
   }
 
   return c.json({ success: true, data: { updated: true } });
@@ -215,6 +227,17 @@ app.post('/dns-verify', zValidator('json', dnsVerifySchema), async (c) => {
     success: true,
     data: { domain, verified: result.verified, actualIp: result.actualIp, serverIp },
   });
+});
+
+app.get('/admin-domain-suggestion', (c) => {
+  const db = c.get('db');
+  const platformDomain = getSetting(db, 'platform_domain');
+
+  if (!platformDomain || /^\d{1,3}(\.\d{1,3}){3}$/.test(platformDomain)) {
+    return c.json({ success: true, data: { suggestion: null } });
+  }
+
+  return c.json({ success: true, data: { suggestion: `frostdeploy.${platformDomain}` } });
 });
 
 export default app;
