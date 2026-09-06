@@ -1,0 +1,30 @@
+# Freim Deploy
+
+> Self-hosted деплой-платформа для веб-студий: одна панель на своём VDS
+> управляет серверами клиентов по SSH. Node 22 + SQLite + Caddy + systemd,
+> без Docker. Атомарные релизы с откатом по healthcheck, автоматический HTTPS,
+> отдельный unix-пользователь на каждый сайт и CMS-портал, в котором клиент
+> правит тексты своего сайта сам.
+
+Установщик открыт и читается до запуска, обновления подписаны ed25519,
+исходный код платформы закрыт. Требования: Debian 12+ или Ubuntu 22.04+,
+от 1 ГБ RAM, root-доступ, домен с wildcard-записью в DNS.
+
+## Установка
+
+- [Runbook для AI-агента](https://artfrost1.github.io/FreimDeploy/agents.md): пошаговая инструкция установки, рассчитанная на выполнение агентом
+- [install.sh](https://github.com/ARTFROST1/FreimDeploy/blob/main/install.sh): установщик, который ставит платформу одной командой
+- [README репозитория](https://github.com/ARTFROST1/FreimDeploy#readme): полная документация, включая ручную установку и устройство релиза
+
+## Сайт
+
+- [Главная](https://artfrost1.github.io/FreimDeploy/): возможности, безопасность, сравнение с Vercel/Netlify и Coolify/Dokploy/CapRover
+- [Home (English)](https://artfrost1.github.io/FreimDeploy/en/): the same page in English
+- [Живое демо панели](https://artfrost1.github.io/FreimDeploy/demo/): интерфейс на вымышленных данных, без регистрации и без сервера
+- [Документация](https://artfrost1.github.io/FreimDeploy/docs/): что такое платформа и шаблон сайта FreimSite, как они соединяются, оглавление справочника
+- [Documentation (English)](https://artfrost1.github.io/FreimDeploy/en/docs/): the same page in English
+
+## Правовое
+
+- [Политика конфиденциальности](https://artfrost1.github.io/FreimDeploy/privacy-policy/)
+- [Пользовательское соглашение](https://artfrost1.github.io/FreimDeploy/terms/)

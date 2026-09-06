@@ -1,0 +1,13 @@
+# Хост карты сайта обязан совпадать с `site` + `base` в astro.config.mjs.
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# Яндекс: рекламные и трекинговые параметры не создают уникального контента —
+# склеиваем дубли, не теряя бюджет обхода. Директиву понимает только Яндекс,
+# остальные боты её игнорируют.
+User-agent: Yandex
+Disallow: /admin
+Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term&yclid&gclid&etext&openstat /
+
+Sitemap: https://artfrost1.github.io/FreimDeploy/sitemap-index.xml

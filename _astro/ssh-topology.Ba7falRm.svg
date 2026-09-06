@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 260" width="560" height="260" fill="none"
+     role="img" aria-label="Панель Freim Deploy подключается по SSH к серверу клиента А с сайтом сайт-а.ru, к серверу клиента Б с магазином и блогом и к вашему собственному серверу с сайтом студии">
+  <style>
+    .b { fill: #ffffff; stroke: rgb(17 17 16 / .09); }
+    .f { fill: #111110; }
+    .l { fill: #ffffff; font: 700 14px Onest, ui-sans-serif, system-ui, sans-serif; }
+    .t { fill: #111110; font: 600 14px Onest, ui-sans-serif, system-ui, sans-serif; }
+    .m { fill: #5c5c58; font: 400 11.5px 'IBM Plex Mono', ui-monospace, monospace; }
+    .w { stroke: rgb(17 17 16 / .18); fill: none; }
+    .dot { fill: #0e9f6e; }
+  </style>
+
+  <rect class="f" x="0" y="96" width="158" height="64" rx="14"/>
+  <text class="l" x="22" y="124">Freim Deploy</text>
+  <text class="l" x="22" y="143" opacity=".55" font-size="11.5" font-weight="500">ваша панель</text>
+
+  <path class="w" d="M158 128 H192 M192 38 V218 M192 38 H228 M192 128 H228 M192 218 H228" stroke-width="1.2"/>
+  <text class="m" x="198" y="31">SSH</text>
+  <text class="m" x="198" y="121">SSH</text>
+  <text class="m" x="198" y="211">SSH</text>
+
+  <rect class="b" x="228" y="12" width="332" height="52" rx="12"/>
+  <circle class="dot" cx="250" cy="38" r="3.5"/>
+  <text class="t" x="264" y="35">Клиент А</text>
+  <text class="m" x="264" y="53">сайт-а.ru</text>
+
+  <rect class="b" x="228" y="102" width="332" height="52" rx="12"/>
+  <circle class="dot" cx="250" cy="128" r="3.5"/>
+  <text class="t" x="264" y="125">Клиент Б</text>
+  <text class="m" x="264" y="143">магазин-б.ru · блог-б.ru</text>
+
+  <rect class="b" x="228" y="192" width="332" height="52" rx="12"/>
+  <circle class="dot" cx="250" cy="218" r="3.5"/>
+  <text class="t" x="264" y="215">Ваша студия</text>
+  <text class="m" x="264" y="233">сайт студии</text>
+</svg>

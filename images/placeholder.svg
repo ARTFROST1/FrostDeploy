@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Placeholder">
+  <rect width="1200" height="800" fill="#e7e5e4"/>
+  <path d="M0 560 L360 360 L620 540 L820 380 L1200 640 L1200 800 L0 800 Z" fill="#d6d3d1"/>
+  <circle cx="960" cy="200" r="90" fill="#d6d3d1"/>
+  <text x="600" y="420" font-family="sans-serif" font-size="42" fill="#a8a29e" text-anchor="middle">Замените изображение</text>
+</svg>

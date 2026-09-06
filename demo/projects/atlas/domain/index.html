@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Minor 4 (финальное ревью поставки 1): `color-scheme` больше не
+         статичен — тема переключаемая (`useTheme`), и живёт в CSS-токенах
+         (tokens.css: `color-scheme: light` в `:root`, `dark` в `.dark`).
+         Зашитый сюда `content="dark"` держал светлую тему со скроллбарами
+         и form-контролами тёмной ОС-палитры. -->
+    <title>Freim Deploy</title>
+
+    <!-- Первая краска темы. Раньше здесь стоял зашитый `class="dark"`, и
+         владелец, выбравший светлую тему, получал чёрную вспышку на каждой
+         загрузке: класс снимался только когда доезжал и исполнялся
+         `main.tsx` с его `initTheme('dark')`. Скрипт синхронный, без `defer`
+         и стоит ДО стилей — браузер не рисует ни кадра, пока он не отработал,
+         поэтому вспышки нет в принципе.
+         Правило приоритета то же, что у `initTheme`/`useTheme`
+         (`packages/ui/src/hooks/use-theme.ts`): сохранённый выбор важнее
+         дефолта приложения. Ключ `fd-theme` и дефолт `dark` продублированы
+         здесь намеренно — модуль сюда не импортировать, иначе вернётся та же
+         вспышка, ради которой скрипт и написан. Замок на эту пару:
+         `ui/src/lib/__tests__/theme-first-paint.test.ts`.
+         localStorage бросает в приватных режимах и при запрете cookie —
+         молчаливый `catch` оставляет дефолт приложения, что честнее белого
+         экрана. -->
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('fd-theme');
+          var theme = stored === 'dark' || stored === 'light' || stored === 'system' ? stored : 'dark';
+          var dark =
+            theme === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+              : theme === 'dark';
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+
+    <!-- Иконки и og-картинка. Файлы физически лежат в `assets/brand/` —
+         `ui/vite.config.ts` объявляет её `publicDir`, поэтому vite кладёт их
+         в `ui/dist` теми же именами, а `build/assemble.sh` увозит `ui/dist`
+         целиком в тарбол. Пути абсолютные от корня: панель всегда
+         обслуживается с корня своего поддомена. -->
+    <link rel="icon" type="image/png" sizes="64x64" href="/FreimDeploy/demo/icon-64.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/FreimDeploy/demo/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/FreimDeploy/demo/icon-180.png" />
+
+    <meta name="description" content="Freim Deploy — панель управления деплоем" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Freim Deploy" />
+    <meta property="og:description" content="Панель управления деплоем" />
+    <meta property="og:image" content="/FreimDeploy/demo/icon-1024.png" />
+    <meta name="twitter:card" content="summary" />
+    <script type="module" crossorigin src="/FreimDeploy/demo/assets/index-D_J-y0Rp.js"></script>
+    <link rel="stylesheet" crossorigin href="/FreimDeploy/demo/assets/index-DQRFnPWF.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

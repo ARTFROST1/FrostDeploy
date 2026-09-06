@@ -1,0 +1,1 @@
+import{n as e,t}from"./clipboard.CYJoVzbl.js";window.__installCopyInit||(window.__installCopyInit=!0,document.addEventListener(`click`,async n=>{let r=n.target?.closest(`[data-copy-for]`);if(!r)return;let i=document.getElementById(r.dataset.copyFor);i&&(await t(i.textContent??``),e(r,r.dataset.labelIdle,r.dataset.labelDone))}));
